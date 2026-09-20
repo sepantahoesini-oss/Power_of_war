@@ -3,5 +3,8 @@
   "name": "power-of-war",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-19",
-  "assets": { "directory": "./public" }
+  "assets": { "directory": "./public" },
+  "vars": {
+    "TEST_BINDING": "OK"
+  }
 }
