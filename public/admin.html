@@ -11,7 +11,11 @@
 </main></div>
 <script>
 let token=sessionStorage.getItem('pow_admin_token')||'';
-async function loginAdmin(){const p=document.getElementById('password').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:p})});if(!r.ok){document.getElementById('loginMsg').textContent='رمز اشتباه است.';return}const d=await r.json();token=d.token;sessionStorage.setItem('pow_admin_token',token);document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden')}
+async function loginAdmin(){const p=document.getElementById('password').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:p})});if(!r.ok){
+ const e=await r.json().catch(()=>({}));
+ document.getElementById('loginMsg').textContent=e.message||'خطا در ورود';
+ return
+}const d=await r.json();token=d.token;sessionStorage.setItem('pow_admin_token',token);document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden')}
 function logout(){sessionStorage.removeItem('pow_admin_token');location.reload()}
 function show(id){['dash','add','list'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));if(id==='list')render()}
 async function api(url,opt={}){opt.headers={...(opt.headers||{}),'Authorization':'Bearer '+token,'content-type':'application/json'};const r=await fetch(url,opt);if(r.status===401){logout();throw Error('auth')}return r}
