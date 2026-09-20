@@ -5,8 +5,8 @@ async function hmac(secret,data){const k=await crypto.subtle.importKey("raw",new
 async function token(env){const exp=Date.now()+1000*60*60*12,body=b64(new TextEncoder().encode(String(exp)));return body+"."+await hmac(env.ADMIN_PASSWORD,body)}
 async function valid(req,env){const x=req.headers.get("authorization")||"";if(!x.startsWith("Bearer "))return false;const t=x.slice(7),[body,sig]=t.split(".");if(!body||!sig||Number(new TextDecoder().decode(ub64(body)))<Date.now())return false;const good=await hmac(env.ADMIN_PASSWORD,body);return good===sig}
 export default{async fetch(req,env){
- const u=new URL(req.url),path=u.pathname;
- if(path==="/api/admin/login"&&req.method==="POST"){try{const {password}=await req.json();if(password!==env.ADMIN_PASSWORD)return json({message:"wrong"},401);return json({token:await token(env)})}catch{return json({message:"bad"},400)}}
+ const u=new URL(req.url),path=u.pathname
+ if(path==="/api/admin/login"&&req.method==="POST"){try{const {password}=await req.json();if(!env.ADMIN_PASSWORD)return json({message:"ADMIN_PASSWORD is missing"},500);if(password!==env.ADMIN_PASSWORD)return json({message:"wrong"},401);return json({token:await token(env)})}catch{return json({message:"bad"},400)}
  if(path==="/api/users/"||path==="/api/users")return json({message:"not found"},404);
  if(path.startsWith("/api/users/")&&req.method==="GET"){const code=decodeURIComponent(path.split("/").pop()).toUpperCase();const r=await env.DB.prepare("SELECT code,name,total_games,played_games FROM users WHERE code=?").bind(code).first();return r?json(r):json({message:"not found"},404)}
  if(path==="/api/admin/users"||path.startsWith("/api/admin/users/")){
