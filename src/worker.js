@@ -372,7 +372,12 @@ async function incomeTotal(env,pid){
 }
 
 
-async function publicPlayer(env,p){
+/* اصلاح اول:
+   تجهیزات از s8_assets خوانده می‌شوند،
+   نه از s8_players
+*/
+
+async function publicPlayer(env,p,includeCode=false){
 
   const ar=await env.DB
     .prepare(`
@@ -383,12 +388,21 @@ async function publicPlayer(env,p){
     .bind(p.id)
     .all();
 
+  const assetRow=await env.DB
+    .prepare(`
+      SELECT *
+      FROM s8_assets
+      WHERE player_id=?
+    `)
+    .bind(p.id)
+    .first();
+
   const assets={};
 
   for(const k of allAssetKeys){
     assets[k]={
       name:META[k].name,
-      qty:Number(p[k]||0),
+      qty:Number(assetRow?.[k]||0),
       price:META[k].price
     };
   }
@@ -423,9 +437,8 @@ async function publicPlayer(env,p){
     rank=0;
   }
 
-  return {
+  const result={
     id:p.id,
-    code:p.user_code,
     name:p.name,
     country:p.country,
     dollars:Number(p.dollars||0),
@@ -435,6 +448,12 @@ async function publicPlayer(env,p){
     income_assets:incomes,
     rank
   };
+
+  if(includeCode){
+    result.code=p.user_code;
+  }
+
+  return result;
 }
 
 
@@ -731,7 +750,8 @@ export default {
         return json(
           await publicPlayer(
             env,
-            a.player
+            a.player,
+            true
           )
         );
       }
@@ -763,7 +783,8 @@ export default {
           out.push(
             await publicPlayer(
               env,
-              p
+              p,
+              false
             )
           );
         }
@@ -964,7 +985,19 @@ export default {
 
         const d=await req.json();
 
-        const to=clean(
+        /*
+          مقصد جدید:
+          کشور انتخاب می‌شود، نه کد کاربری.
+          to_code برای سازگاری با نسخه قدیمی
+          نگه داشته شده است.
+        */
+
+        const toCountry=clean(
+          d.to_country ||
+          d.country
+        );
+
+        const oldToCode=clean(
           d.to_code
         ).toUpperCase();
 
@@ -974,15 +1007,33 @@ export default {
           Number(d.quantity)
         );
 
-        const b=await env.DB
-          .prepare(`
-            SELECT *
-            FROM s8_players
-            WHERE user_code=?
-            AND active=1
-          `)
-          .bind(to)
-          .first();
+        let b=null;
+
+        if(toCountry){
+
+          b=await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE country=?
+              AND active=1
+            `)
+            .bind(toCountry)
+            .first();
+
+        }else if(oldToCode){
+
+          b=await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE user_code=?
+              AND active=1
+            `)
+            .bind(oldToCode)
+            .first();
+
+        }
 
         if(
           !b ||
@@ -1081,8 +1132,22 @@ export default {
 
         }else{
 
+          /*
+            اصلاح دوم:
+            موجودی تجهیزات از s8_assets خوانده می‌شود.
+          */
+
+          const senderAsset=await env.DB
+            .prepare(`
+              SELECT ${key}
+              FROM s8_assets
+              WHERE player_id=?
+            `)
+            .bind(a.player.id)
+            .first();
+
           if(
-            Number(a.player[key]||0)<qty
+            Number(senderAsset?.[key]||0)<qty
           ){
             return json(
               {message:'موجودی کافی نیست'},
@@ -1152,7 +1217,7 @@ export default {
             a.player.id,
             a.user.code,
             'transfer',
-            `انتقال ${key} به ${b.user_code}`,
+            `انتقال ${key} به ${b.country}`,
             0,
             qty,
             key
@@ -1203,7 +1268,17 @@ export default {
             ?'defense'
             :'war';
 
-        const to=clean(
+        /*
+          مقصد جدید:
+          کشور حریف انتخاب می‌شود.
+        */
+
+        const toCountry=clean(
+          d.to_country ||
+          d.country
+        );
+
+        const oldToCode=clean(
           d.to_code
         ).toUpperCase();
 
@@ -1218,15 +1293,33 @@ export default {
           );
         }
 
-        const defender=await env.DB
-          .prepare(`
-            SELECT *
-            FROM s8_players
-            WHERE user_code=?
-            AND active=1
-          `)
-          .bind(to)
-          .first();
+        let defender=null;
+
+        if(toCountry){
+
+          defender=await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE country=?
+              AND active=1
+            `)
+            .bind(toCountry)
+            .first();
+
+        }else if(oldToCode){
+
+          defender=await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE user_code=?
+              AND active=1
+            `)
+            .bind(oldToCode)
+            .first();
+
+        }
 
         if(
           !defender ||
@@ -1245,6 +1338,21 @@ export default {
 
         const selected=d.assets||{};
         const cleaned=[];
+
+        /*
+          اصلاح سوم:
+          موجودی تجهیزات قبل از جنگ از s8_assets
+          بررسی می‌شود.
+        */
+
+        const currentAssets=await env.DB
+          .prepare(`
+            SELECT *
+            FROM s8_assets
+            WHERE player_id=?
+          `)
+          .bind(a.player.id)
+          .first();
 
         for(
           const [k,v]
@@ -1265,7 +1373,7 @@ export default {
             }
 
             if(
-              Number(a.player[k]||0)<q
+              Number(currentAssets?.[k]||0)<q
             ){
               return json(
                 {
