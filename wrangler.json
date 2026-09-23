@@ -6,6 +6,13 @@
   "assets": {
     "directory": "./public"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "power-of-war-season8",
+      "database_id": "fa0a06a9-89a6-45fd-88c4-c7ce0eff0ed5"
+    }
+  ],
   "triggers": {
     "crons": ["* * * * *"]
   }
