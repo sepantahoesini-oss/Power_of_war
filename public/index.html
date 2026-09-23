@@ -422,7 +422,12 @@ footer{
 <header>
  <div class="wrap nav">
   <div class="brand">POWER <span>OF WAR</span></div>
-  <button class="account" type="button" onclick="openAccount()">
+
+  <button
+   class="account"
+   type="button"
+   onclick="openAccount()"
+  >
    👤 حساب کاربری
   </button>
  </div>
@@ -431,6 +436,7 @@ footer{
 <main class="wrap">
 
 <section id="home" class="hero">
+
  <div class="badge">
   <span class="dot"></span>
   سیزن ۸ • جنگ جهانی سوم • درحال اجرا
@@ -441,6 +447,7 @@ footer{
  <p class="lead">
   سیزن هشتم؛ میدان رقابت دولت‌ها، اقتصاد، تجهیزات و سناریوهای جنگی.
  </p>
+
 </section>
 
 <section id="cards" class="cards">
@@ -606,7 +613,11 @@ footer{
  <div class="head">
   <h2>⚔️ سیزن ۸ — <span id="countryTitle"></span></h2>
 
-  <button class="btn" type="button" onclick="seasonLogout()">
+  <button
+   class="btn"
+   type="button"
+   onclick="seasonLogout()"
+  >
    خروج از سیزن
   </button>
  </div>
@@ -621,8 +632,11 @@ footer{
 
 </main>
 
-<div id="accountModal" class="modal"
- onclick="if(event.target===this)closeAccount()">
+<div
+ id="accountModal"
+ class="modal"
+ onclick="if(event.target===this)closeAccount()"
+>
 
  <div class="modalbox">
 
@@ -686,7 +700,6 @@ let seasonCode =
 
 let me = null;
 let catalog = null;
-
 
 /* -----------------------------
    عمومی
@@ -1416,11 +1429,35 @@ async function buy(k){
    انتقال
 ----------------------------- */
 
+/*
+  لیست کشورهای فعال سیزن.
+  فقط country دریافت می‌شود.
+  user_code در رابط کاربری استفاده نمی‌شود.
+*/
+
+async function getTargetCountries(){
+
+ const rows =
+  await req('/api/season/governments');
+
+ return (rows || [])
+  .filter(p =>
+   p &&
+   p.country &&
+   p.country !== me?.country
+  )
+  .map(p => p.country);
+}
+
+
 async function openTransfer(){
 
  try{
 
   await ensureCatalog();
+
+  const countries =
+   await getTargetCountries();
 
   $('seasonExtra').innerHTML = `
 
@@ -1436,14 +1473,37 @@ async function openTransfer(){
     <div class="formgrid">
 
      <div class="field">
-      <label>کد گیرنده</label>
-      <input
-       id="trTo"
-       placeholder="POW123"
-      >
+
+      <label>کشور گیرنده</label>
+
+      <select id="trTo">
+
+       <option value="">
+        انتخاب کشور
+       </option>
+
+       ${
+        countries.length
+        ?
+        countries.map(country=>`
+         <option value="${esc(country)}">
+          ${esc(country)}
+         </option>
+        `).join('')
+        :
+        `
+         <option value="" disabled>
+          کشور دیگری برای انتقال وجود ندارد
+         </option>
+        `
+       }
+
+      </select>
+
      </div>
 
      <div class="field">
+
       <label>دارایی</label>
 
       <select id="trKey">
@@ -1475,6 +1535,7 @@ async function openTransfer(){
     </div>
 
     <div class="field">
+
      <label>تعداد</label>
 
      <input
@@ -1483,6 +1544,7 @@ async function openTransfer(){
       min="1"
       value="1"
      >
+
     </div>
 
     <button
@@ -1511,7 +1573,7 @@ async function transfer(){
  try{
 
   const to =
-   $('trTo').value.trim().toUpperCase();
+   $('trTo').value.trim();
 
   const key =
    $('trKey').value;
@@ -1519,17 +1581,30 @@ async function transfer(){
   const quantity =
    Number($('trQty').value);
 
-  if(!/^POW\d+$/.test(to)){
+  if(!to){
 
    toast(
-    'کد گیرنده نامعتبر است.',
+    'کشور گیرنده را انتخاب کنید.',
     true
    );
 
    return;
   }
 
-  if(!Number.isSafeInteger(quantity) || quantity<1){
+  if(to===me?.country){
+
+   toast(
+    'نمی‌توانید به کشور خودتان انتقال دهید.',
+    true
+   );
+
+   return;
+  }
+
+  if(
+   !Number.isSafeInteger(quantity) ||
+   quantity<1
+  ){
 
    toast(
     'تعداد نامعتبر است.',
@@ -1547,7 +1622,7 @@ async function transfer(){
      'x-user-code':seasonCode
     },
     body:JSON.stringify({
-     to_code:to,
+     to_country:to,
      key:key,
      quantity:quantity
     })
@@ -1570,6 +1645,11 @@ async function transfer(){
    جنگ / دفاع
 ----------------------------- */
 
+/*
+  کشورهای حریف از governments گرفته می‌شوند.
+  کد کاربری هیچ بازیکنی نمایش داده نمی‌شود.
+*/
+
 async function openBattle(){
 
  try{
@@ -1578,6 +1658,9 @@ async function openBattle(){
 
   const s =
    await req('/api/season/settings');
+
+  const countries =
+   await getTargetCountries();
 
   $('seasonExtra').innerHTML = `
 
@@ -1617,12 +1700,31 @@ async function openBattle(){
 
      <div class="field">
 
-      <label>کد کشور حریف</label>
+      <label>کشور حریف</label>
 
-      <input
-       id="btTo"
-       placeholder="POW123"
-      >
+      <select id="btTo">
+
+       <option value="">
+        انتخاب کشور حریف
+       </option>
+
+       ${
+        countries.length
+        ?
+        countries.map(country=>`
+         <option value="${esc(country)}">
+          ${esc(country)}
+         </option>
+        `).join('')
+        :
+        `
+         <option value="" disabled>
+          کشور دیگری برای نبرد وجود ندارد
+         </option>
+        `
+       }
+
+      </select>
 
      </div>
 
@@ -1736,15 +1838,25 @@ async function submitBattle(){
    $('btMode').value;
 
   const to =
-   $('btTo').value.trim().toUpperCase();
+   $('btTo').value.trim();
 
   const scenario =
    $('btScenario').value.trim();
 
-  if(!/^POW\d+$/.test(to)){
+  if(!to){
 
    toast(
-    'کد کشور حریف نامعتبر است.',
+    'کشور حریف را انتخاب کنید.',
+    true
+   );
+
+   return;
+  }
+
+  if(to===me?.country){
+
+   toast(
+    'نمی‌توانید کشور خودتان را انتخاب کنید.',
     true
    );
 
@@ -1808,7 +1920,7 @@ async function submitBattle(){
     },
     body:JSON.stringify({
      mode,
-     to_code:to,
+     to_country:to,
      scenario,
      assets:selected
     })
@@ -2143,4 +2255,4 @@ $('codeInput').addEventListener(
 </script>
 
 </body>
-    </html>
+ </html>
