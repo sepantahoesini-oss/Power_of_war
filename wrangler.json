@@ -1,18 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "power-of-war-season8",
+  "name": "power-of-war",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-22",
   "assets": {
     "directory": "./public"
   },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "power-of-war-season8",
-      "database_id": "YOUR_DATABASE_ID"
-    }
-  ],
   "triggers": {
     "crons": ["* * * * *"]
   }
