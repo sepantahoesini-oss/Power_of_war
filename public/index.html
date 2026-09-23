@@ -2253,6 +2253,19 @@ $('codeInput').addEventListener(
 })();
 
 </script>
+<audio id="bgMusic">
+  <source src="/music.mp3" type="audio/mpeg">
+</audio>
 
+<script>
+  const music = document.getElementById("bgMusic");
+  music.volume = 0.15;
+
+  document.addEventListener("click", () => {
+    if (music.paused) {
+      music.play().catch(() => {});
+    }
+  }, { once: true });
+</script>
 </body>
  </html>
