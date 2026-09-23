@@ -1,9 +1,19 @@
 {
-  "$schema":"node_modules/wrangler/config-schema.json",
-  "name":"power-of-war-season8",
-  "main":"src/worker.js",
-  "compatibility_date":"2026-09-22",
-  "assets":{"directory":"./public"},
-  "d1_databases":[{"binding":"DB","database_name":"power-of-war-season8","database_id":"REPLACE_WITH_SEASON8_D1_DATABASE_ID"}],
-  "triggers":{"crons":["* * * * *"]}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "power-of-war-season8",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-22",
+  "assets": {
+    "directory": "./public"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "power-of-war-season8",
+      "database_id": "YOUR_DATABASE_ID"
+    }
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
 }
