@@ -968,6 +968,227 @@ export default {
 
 
       /* =====================================
+         BUY BATCH — خرید کل
+      ===================================== */
+
+      if(
+        path==='/api/season/buy-batch' &&
+        req.method==='POST'
+      ){
+
+        const a=await auth(
+          req,
+          env
+        );
+
+        if(a.error)return a.error;
+
+        const d=await req.json();
+
+        if(
+          !Array.isArray(d.items) ||
+          !d.items.length
+        ){
+          return json(
+            {
+              message:
+                'هیچ خریدی انتخاب نشده است.'
+            },
+            400
+          );
+        }
+
+        const items=[];
+        const seen=new Set();
+        let total=0;
+
+        for(
+          const item of d.items
+        ){
+
+          const key=clean(
+            item?.key
+          );
+
+          const qty=Math.floor(
+            Number(item?.quantity)
+          );
+
+          if(
+            seen.has(key)
+          ){
+            return json(
+              {
+                message:
+                  'یک تجهیز بیش از یک بار انتخاب شده است.'
+              },
+              400
+            );
+          }
+
+          seen.add(key);
+
+          if(
+            !META[key] ||
+            !Number.isSafeInteger(qty) ||
+            qty<2
+          ){
+            return json(
+              {
+                message:
+                  'اطلاعات یکی از خریدها نامعتبر است.'
+              },
+              400
+            );
+          }
+
+          const m=META[key];
+
+          const cost=m.price*qty;
+
+          if(
+            !Number.isSafeInteger(cost)
+          ){
+            return json(
+              {
+                message:
+                  'مبلغ یکی از خریدها نامعتبر است.'
+              },
+              400
+            );
+          }
+
+          total+=cost;
+
+          items.push({
+            key,
+            qty,
+            meta:m,
+            cost
+          });
+        }
+
+        if(
+          !Number.isSafeInteger(total)
+        ){
+          return json(
+            {
+              message:
+                'مبلغ کل خرید نامعتبر است.'
+            },
+            400
+          );
+        }
+
+        if(
+          Number(a.player.dollars)<total
+        ){
+          return json(
+            {
+              message:
+                'موجودی کافی نیست'
+            },
+            400
+          );
+        }
+
+        const statements=[];
+
+        statements.push(
+          env.DB.prepare(`
+            UPDATE s8_players
+            SET
+              dollars=dollars-?,
+              updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+          `).bind(
+            total,
+            a.player.id
+          )
+        );
+
+        for(
+          const item of items
+        ){
+
+          const transactionId=txCode();
+
+          if(
+            item.meta.category==='income'
+          ){
+
+            statements.push(
+              env.DB.prepare(`
+                INSERT INTO s8_income_assets(
+                  player_id,
+                  kind,
+                  qty
+                )
+                VALUES(?,?,?)
+                ON CONFLICT(player_id,kind)
+                DO UPDATE SET
+                  qty=qty+excluded.qty
+              `).bind(
+                a.player.id,
+                item.key,
+                item.qty
+              )
+            );
+
+          }else{
+
+            statements.push(
+              env.DB.prepare(`
+                UPDATE s8_assets
+                SET ${item.key}=${item.key}+?
+                WHERE player_id=?
+              `).bind(
+                item.qty,
+                a.player.id
+              )
+            );
+          }
+
+          statements.push(
+            env.DB.prepare(`
+              INSERT INTO s8_transactions(
+                tx_code,
+                player_id,
+                user_code,
+                type,
+                description,
+                amount,
+                quantity,
+                item_key
+              )
+              VALUES(?,?,?,?,?,?,?,?)
+            `).bind(
+              transactionId,
+              a.player.id,
+              a.user.code,
+              'buy',
+              item.meta.name,
+              item.cost,
+              item.qty,
+              item.key
+            )
+          );
+        }
+
+        await env.DB.batch(
+          statements
+        );
+
+        return json({
+          message:
+            'خرید کل با موفقیت انجام شد.',
+          total,
+          count:items.length
+        });
+      }
+
+
+      /* =====================================
          TRANSFER
       ===================================== */
 
@@ -984,13 +1205,6 @@ export default {
         if(a.error)return a.error;
 
         const d=await req.json();
-
-        /*
-          مقصد جدید:
-          کشور انتخاب می‌شود، نه کد کاربری.
-          to_code برای سازگاری با نسخه قدیمی
-          نگه داشته شده است.
-        */
 
         const toCountry=clean(
           d.to_country ||
@@ -1059,7 +1273,10 @@ export default {
           META[key]?.category==='income'
         ){
           return json(
-            {message:'دارایی‌های درآمدزا قابل انتقال نیستند.'},
+            {
+              message:
+                'دارایی‌های درآمدزا قابل انتقال نیستند.'
+            },
             400
           );
         }
@@ -1086,7 +1303,10 @@ export default {
 
         if(Number(cnt?.n||0)>=3){
           return json(
-            {message:'سقف ۳ انتقال امروز شما پر شده است.'},
+            {
+              message:
+                'سقف ۳ انتقال امروز شما پر شده است.'
+            },
             400
           );
         }
@@ -1131,11 +1351,6 @@ export default {
           ]);
 
         }else{
-
-          /*
-            اصلاح دوم:
-            موجودی تجهیزات از s8_assets خوانده می‌شود.
-          */
 
           const senderAsset=await env.DB
             .prepare(`
@@ -1268,11 +1483,6 @@ export default {
             ?'defense'
             :'war';
 
-        /*
-          مقصد جدید:
-          کشور حریف انتخاب می‌شود.
-        */
-
         const toCountry=clean(
           d.to_country ||
           d.country
@@ -1339,12 +1549,6 @@ export default {
         const selected=d.assets||{};
         const cleaned=[];
 
-        /*
-          اصلاح سوم:
-          موجودی تجهیزات قبل از جنگ از s8_assets
-          بررسی می‌شود.
-        */
-
         const currentAssets=await env.DB
           .prepare(`
             SELECT *
@@ -1367,7 +1571,10 @@ export default {
 
             if(!allowed.includes(k)){
               return json(
-                {message:'این تجهیز برای این نوع نبرد مجاز نیست.'},
+                {
+                  message:
+                    'این تجهیز برای این نوع نبرد مجاز نیست.'
+                },
                 400
               );
             }
