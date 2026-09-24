@@ -298,6 +298,64 @@ h1 span{color:var(--g)}
  padding:10px
 }
 
+/* سبد خرید */
+.buy-cart{
+ margin-top:20px;
+ padding:18px;
+ background:#0d1417;
+ border:1px solid #8dff9a33;
+ border-radius:15px
+}
+
+.buy-cart h3{
+ margin-top:0;
+ color:var(--g)
+}
+
+.buy-cart-row{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding:10px 0;
+ border-bottom:1px solid #202a2f
+}
+
+.buy-cart-row:last-child{
+ border-bottom:0
+}
+
+.buy-cart-row small{
+ color:var(--m)
+}
+
+.buy-cart-total{
+ margin-top:14px;
+ padding-top:14px;
+ border-top:1px solid var(--line);
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ color:var(--y);
+ font-weight:900
+}
+
+.buy-all{
+ width:100%;
+ margin-top:12px;
+ padding:12px;
+ border:0;
+ border-radius:10px;
+ background:var(--g);
+ color:#061009;
+ font-weight:900
+}
+
+.buy-all:disabled{
+ opacity:.5;
+ cursor:not-allowed
+}
+
 .table{
  overflow:auto;
  border:1px solid var(--line);
@@ -700,6 +758,10 @@ let seasonCode =
 
 let me = null;
 let catalog = null;
+
+/* سبد خرید */
+let purchaseCart = {};
+
 
 /* -----------------------------
    عمومی
@@ -1300,10 +1362,14 @@ async function openStore(){
     }
    </div>
 
+   <div id="buyCart"></div>
+
    </div>
   `;
 
   $('seasonExtra').innerHTML=h;
+
+  renderBuyCart();
 
  }catch(e){
 
@@ -1315,6 +1381,9 @@ async function openStore(){
 
 
 function storeCard(x,income){
+
+ const current =
+  Number(purchaseCart[x.key] || 1);
 
  return `
   <div class="store-card">
@@ -1349,7 +1418,7 @@ function storeCard(x,income){
      −
     </button>
 
-    <span id="q_${x.key}">1</span>
+    <span id="q_${x.key}">${current}</span>
 
     <button
      type="button"
@@ -1365,7 +1434,11 @@ function storeCard(x,income){
     type="button"
     onclick="buy('${x.key}')"
    >
-    خرید
+    ${
+     purchaseCart[x.key]
+     ? 'افزودن به خرید'
+     : 'انتخاب برای خرید'
+    }
    </button>
 
   </div>
@@ -1379,21 +1452,148 @@ function changeQ(k,d){
 
  if(!e) return;
 
- e.textContent =
+ const q =
   Math.max(
    1,
    Number(e.textContent || 1)+d
   );
+
+ e.textContent=q;
+
+ if(q>=2){
+
+  purchaseCart[k]=q;
+
+ }else{
+
+  delete purchaseCart[k];
+
+ }
+
+ renderBuyCart();
+
+}
+
+
+function renderBuyCart(){
+
+ const box=$('buyCart');
+
+ if(!box) return;
+
+ const items =
+  Object.entries(purchaseCart);
+
+ if(!items.length){
+
+  box.innerHTML='';
+
+  return;
+ }
+
+ let total=0;
+
+ let html=`
+  <div class="buy-cart">
+
+   <h3>🛒 خریدهای انتخاب‌شده</h3>
+ `;
+
+ for(const [key,qty] of items){
+
+  const item =
+   META_FROM_CATALOG(key);
+
+  if(!item) continue;
+
+  const price =
+   Number(item.price||0);
+
+  const cost =
+   price*qty;
+
+  total+=cost;
+
+  html+=`
+   <div class="buy-cart-row">
+
+    <span>
+     <b>${esc(item.name)}</b>
+     <small>
+      × ${fmt(qty)}
+     </small>
+    </span>
+
+    <b class="price">
+     $${fmt(cost)}
+    </b>
+
+   </div>
+  `;
+
+ }
+
+ html+=`
+   <div class="buy-cart-total">
+    <span>مبلغ کل</span>
+    <span>$${fmt(total)}</span>
+   </div>
+
+   <button
+    id="buyAllButton"
+    class="buy-all"
+    type="button"
+    onclick="buyAll()"
+   >
+    خرید همه
+   </button>
+
+  </div>
+ `;
+
+ box.innerHTML=html;
+}
+
+
+function META_FROM_CATALOG(key){
+
+ for(const rows of Object.values(catalog?.equipment || {})){
+
+  const x =
+   rows.find(item=>item.key===key);
+
+  if(x) return x;
+
+ }
+
+ return (catalog?.income || [])
+  .find(item=>item.key===key) || null;
 
 }
 
 
 async function buy(k){
 
- try{
+ const e=$('q_'+k);
 
-  const q =
-   Number($('q_'+k)?.textContent || 1);
+ const q =
+  Number(e?.textContent || 1);
+
+ if(q>=2){
+
+  purchaseCart[k]=q;
+
+  renderBuyCart();
+
+  toast('به سبد خرید اضافه شد.');
+
+  return;
+ }
+
+ const oldScroll =
+  window.scrollY;
+
+ try{
 
   const d =
    await req('/api/season/buy',{
@@ -1404,7 +1604,7 @@ async function buy(k){
     },
     body:JSON.stringify({
      key:k,
-     quantity:q
+     quantity:1
     })
    });
 
@@ -1416,6 +1616,13 @@ async function buy(k){
 
   await openStore();
 
+  requestAnimationFrame(()=>{
+   window.scrollTo(
+    0,
+    oldScroll
+   );
+  });
+
  }catch(e){
 
   toast(e.message,true);
@@ -1425,15 +1632,91 @@ async function buy(k){
 }
 
 
+async function buyAll(){
+
+ const items =
+  Object.entries(purchaseCart)
+  .map(([key,quantity])=>({
+   key,
+   quantity:Number(quantity)
+  }))
+  .filter(x=>
+   Number.isSafeInteger(x.quantity) &&
+   x.quantity>=2
+  );
+
+ if(!items.length){
+
+  toast(
+   'چیزی برای خرید انتخاب نشده است.',
+   true
+  );
+
+  return;
+ }
+
+ const button=$('buyAllButton');
+
+ if(button){
+
+  button.disabled=true;
+  button.textContent='در حال پرداخت...';
+
+ }
+
+ const oldScroll =
+  window.scrollY;
+
+ try{
+
+  const d =
+   await req('/api/season/buy-batch',{
+    method:'POST',
+    headers:{
+     'content-type':'application/json',
+     'x-user-code':seasonCode
+    },
+    body:JSON.stringify({
+     items
+    })
+   });
+
+  toast(
+   d.message || 'خرید کل با موفقیت انجام شد.'
+  );
+
+  purchaseCart={};
+
+  await loadSeason();
+
+  await openStore();
+
+  requestAnimationFrame(()=>{
+   window.scrollTo(
+    0,
+    oldScroll
+   );
+  });
+
+ }catch(e){
+
+  toast(e.message,true);
+
+  if(button){
+
+   button.disabled=false;
+   button.textContent='خرید همه';
+
+  }
+
+ }
+
+}
+
+
 /* -----------------------------
    انتقال
 ----------------------------- */
-
-/*
-  لیست کشورهای فعال سیزن.
-  فقط country دریافت می‌شود.
-  user_code در رابط کاربری استفاده نمی‌شود.
-*/
 
 async function getTargetCountries(){
 
@@ -1644,11 +1927,6 @@ async function transfer(){
 /* -----------------------------
    جنگ / دفاع
 ----------------------------- */
-
-/*
-  کشورهای حریف از governments گرفته می‌شوند.
-  کد کاربری هیچ بازیکنی نمایش داده نمی‌شود.
-*/
 
 async function openBattle(){
 
@@ -2198,6 +2476,7 @@ function seasonLogout(){
 
  seasonCode='';
  me=null;
+ purchaseCart={};
 
  sessionStorage.removeItem(
   's8_code'
@@ -2253,6 +2532,7 @@ $('codeInput').addEventListener(
 })();
 
 </script>
+
 <audio id="bgMusic">
   <source src="/music.mp3" type="audio/mpeg">
 </audio>
@@ -2267,5 +2547,6 @@ $('codeInput').addEventListener(
     }
   }, { once: true });
 </script>
+
 </body>
- </html>
+   </html>
