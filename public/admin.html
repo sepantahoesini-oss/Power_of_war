@@ -15,12 +15,11 @@
   --g:#8dff9a;
   --y:#ffe56a;
   --r:#ff5968;
-  --m:#8e9b9f
+  --m:#8e9b9f;
+  --b:#63b3ff
 }
 
-*{
-  box-sizing:border-box
-}
+*{box-sizing:border-box}
 
 body{
   margin:0;
@@ -54,9 +53,7 @@ header{
   color:var(--g)
 }
 
-.brand span{
-  color:var(--y)
-}
+.brand span{color:var(--y)}
 
 .login{
   width:min(430px,100%);
@@ -81,6 +78,11 @@ input,select{
   color:#fff
 }
 
+input[type="checkbox"]{
+  width:auto;
+  margin:0
+}
+
 .btn{
   border:1px solid #39484f;
   background:#11191d;
@@ -90,6 +92,8 @@ input,select{
   cursor:pointer
 }
 
+.btn:hover{filter:brightness(1.15)}
+
 .primary{
   background:var(--g);
   color:#061009;
@@ -97,14 +101,27 @@ input,select{
   font-weight:900
 }
 
+.aiBtn{
+  border-color:#63b3ff66;
+  color:#8ac8ff
+}
+
+.aiOn{
+  color:#8dff9a;
+  border-color:#8dff9a66
+}
+
+.aiOff{
+  color:#ff9aa4;
+  border-color:#ff596866
+}
+
 .danger{
   color:#ff9aa4;
   border-color:#ff596855
 }
 
-.dashboard{
-  display:none
-}
+.dashboard{display:none}
 
 .layout{
   display:grid;
@@ -127,13 +144,9 @@ input,select{
   margin:6px 0
 }
 
-.view{
-  display:none
-}
+.view{display:none}
 
-.view.active{
-  display:block
-}
+.view.active{display:block}
 
 .grid2{
   display:grid;
@@ -150,7 +163,7 @@ input,select{
 
 .table table{
   width:100%;
-  min-width:850px;
+  min-width:950px;
   border-collapse:collapse
 }
 
@@ -187,31 +200,51 @@ input,select{
   line-height:2
 }
 
-.muted{
-  color:var(--m)
+.muted{color:var(--m)}
+.dangerText{color:#ff8f9a}
+.ok{color:var(--g)}
+.blue{color:#8ac8ff}
+
+.aiBox{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px;
+  margin:10px 0;
+  background:#0a1218;
+  border:1px solid #63b3ff33;
+  border-radius:12px
 }
 
-.dangerText{
-  color:#ff8f9a
+.aiBox label{
+  cursor:pointer;
+  font-weight:700
 }
 
-.ok{
-  color:var(--g)
+.badge{
+  display:inline-block;
+  padding:4px 9px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:800
+}
+
+.badgeAI{
+  color:#8ac8ff;
+  background:#17334a;
+  border:1px solid #63b3ff55
+}
+
+.badgeHuman{
+  color:#8dff9a;
+  background:#14331a;
+  border:1px solid #8dff9a44
 }
 
 @media(max-width:850px){
-
-  .layout{
-    grid-template-columns:1fr
-  }
-
-  .grid2{
-    grid-template-columns:1fr
-  }
-
-  .side{
-    position:static
-  }
+  .layout{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .side{position:static}
 }
 </style>
 </head>
@@ -225,9 +258,7 @@ input,select{
 POWER <span>OF WAR</span> — مدیریت سیزن ۸
 </div>
 
-<button class="btn" onclick="logout()">
-خروج
-</button>
+<button class="btn" onclick="logout()">خروج</button>
 
 </div>
 </header>
@@ -300,7 +331,6 @@ onclick="login()"
 </button>
 
 </aside>
-
 
 <section>
 
@@ -381,7 +411,6 @@ async function login(){
     );
 
     showDash();
-
     openView('users');
 
   }catch(e){
@@ -511,29 +540,26 @@ async function addUser(){
 
   try{
 
-    await api(
-      '/api/admin/users',
-      {
-        method:'POST',
-        headers:H(),
-        body:JSON.stringify({
+    await api('/api/admin/users',{
+      method:'POST',
+      headers:H(),
+      body:JSON.stringify({
 
-          code:$('uCode').value.trim(),
+        code:$('uCode').value.trim(),
 
-          name:$('uName').value.trim(),
+        name:$('uName').value.trim(),
 
-          total_games:
-            Number($('uGames').value),
+        total_games:
+          Number($('uGames').value),
 
-          wins:
-            Number($('uWins').value),
+        wins:
+          Number($('uWins').value),
 
-          loyalty_date:
-            $('uDate').value.trim()||null
+        loyalty_date:
+          $('uDate').value.trim()||null
 
-        })
-      }
-    );
+      })
+    });
 
     alert('کاربر اضافه شد');
 
@@ -559,18 +585,14 @@ async function renderUserList(){
 
     const us=await api(
       '/api/admin/users',
-      {
-        headers:H()
-      }
+      {headers:H()}
     );
 
     $('userlist').innerHTML=`
 
     <div class="box">
 
-      <h2>
-        👥 لیست کاربران مجموعه
-      </h2>
+      <h2>👥 لیست کاربران مجموعه</h2>
 
       <div class="table">
 
@@ -597,13 +619,9 @@ async function renderUserList(){
 
               <td>${u.total_games}</td>
 
-              <td>
-                ${u.wins??u.victories??0}
-              </td>
+              <td>${u.wins??u.victories??0}</td>
 
-              <td>
-                ${esc(u.loyalty_date)}
-              </td>
+              <td>${esc(u.loyalty_date)}</td>
 
               <td>
                 ${
@@ -631,27 +649,21 @@ async function renderUserList(){
 
                 <button
                   class="btn"
-                  onclick="blockUser(
-                    '${esc(u.code)}'
-                  )"
+                  onclick="blockUser('${esc(u.code)}')"
                 >
                   مسدود
                 </button>
 
                 <button
                   class="btn"
-                  onclick="unblock(
-                    '${esc(u.code)}'
-                  )"
+                  onclick="unblock('${esc(u.code)}')"
                 >
                   رفع مسدودی
                 </button>
 
                 <button
                   class="btn danger"
-                  onclick="delUser(
-                    '${esc(u.code)}'
-                  )"
+                  onclick="delUser('${esc(u.code)}')"
                 >
                   حذف
                 </button>
@@ -682,25 +694,13 @@ async function renderUserList(){
 
 async function editUser(c,n,g,w){
 
-  const nn=prompt(
-    'نام',
-    n
-  );
-
+  const nn=prompt('نام',n);
   if(nn===null)return;
 
-  const gg=prompt(
-    'کل بازی‌ها',
-    g
-  );
-
+  const gg=prompt('کل بازی‌ها',g);
   if(gg===null)return;
 
-  const ww=prompt(
-    'پیروزی‌ها',
-    w
-  );
-
+  const ww=prompt('پیروزی‌ها',w);
   if(ww===null)return;
 
   try{
@@ -712,13 +712,9 @@ async function editUser(c,n,g,w){
         method:'PUT',
         headers:H(),
         body:JSON.stringify({
-
           name:nn,
-
           total_games:Number(gg),
-
           wins:Number(ww)
-
         })
       }
     );
@@ -760,11 +756,8 @@ async function blockUser(c){
         method:'PUT',
         headers:H(),
         body:JSON.stringify({
-
           action:'block',
-
           type:t
-
         })
       }
     );
@@ -809,11 +802,7 @@ async function unblock(c){
 
 async function delUser(c){
 
-  if(
-    !confirm(
-      'این کاربر حذف شود؟'
-    )
-  ){
+  if(!confirm('این کاربر حذف شود؟')){
     return;
   }
 
@@ -847,9 +836,7 @@ async function renderAddPlayer(){
 
     const us=await api(
       '/api/admin/users',
-      {
-        headers:H()
-      }
+      {headers:H()}
     );
 
     $('addplayer').innerHTML=`
@@ -861,7 +848,7 @@ async function renderAddPlayer(){
       </h2>
 
       <p class="muted">
-        کاربر را انتخاب کنید و کشور آزاد را ثبت کنید.
+        کاربر را انتخاب کنید و کشور را ثبت کنید.
       </p>
 
       <select id="pUser">
@@ -872,11 +859,9 @@ async function renderAddPlayer(){
           .map(u=>`
 
             <option value="${esc(u.code)}">
-
               ${esc(u.code)}
               —
               ${esc(u.name)}
-
             </option>
 
           `).join('')
@@ -896,6 +881,23 @@ async function renderAddPlayer(){
         value="0"
         placeholder="نفت اولیه"
       >
+
+      <div class="aiBox">
+
+        <input
+          id="pAI"
+          type="checkbox"
+        >
+
+        <label for="pAI">
+          🤖 این کشور تحت کنترل هوش مصنوعی باشد
+        </label>
+
+      </div>
+
+      <p class="muted">
+        کشورهای AI توسط سیستم بازی کنترل می‌شوند و کاربر عادی نمی‌تواند وارد آن‌ها شود.
+      </p>
 
       <button
         class="btn primary"
@@ -921,6 +923,14 @@ async function addPlayer(){
 
   try{
 
+    const country=$('pCountry').value.trim();
+
+    if(!country){
+      throw Error('کشور را وارد کنید.');
+    }
+
+    const isAI=$('pAI').checked;
+
     await api(
       '/api/admin/players',
       {
@@ -931,18 +941,21 @@ async function addPlayer(){
           user_code:
             $('pUser').value,
 
-          country:
-            $('pCountry').value.trim(),
+          country,
 
           oil:
-            Number($('pOil').value)
+            Number($('pOil').value),
+
+          is_ai:isAI
 
         })
       }
     );
 
     alert(
-      'بازیکن سیزن ۸ ثبت شد'
+      isAI
+      ?'بازیکن AI سیزن ۸ ثبت شد 🤖'
+      :'بازیکن سیزن ۸ ثبت شد'
     );
 
     renderAddPlayer();
@@ -967,9 +980,7 @@ async function renderPlayers(){
 
     players=await api(
       '/api/admin/players',
-      {
-        headers:H()
-      }
+      {headers:H()}
     );
 
     $('players').innerHTML=`
@@ -980,6 +991,10 @@ async function renderPlayers(){
         🌎 لیست بازیکنان سیزن ۸
       </h2>
 
+      <p class="muted">
+        وضعیت AI فقط در پنل مدیریت نمایش داده می‌شود.
+      </p>
+
       <div class="table">
 
         <table>
@@ -988,6 +1003,7 @@ async function renderPlayers(){
             <th>رتبه</th>
             <th>کشور</th>
             <th>کاربر</th>
+            <th>نوع</th>
             <th>دلار</th>
             <th>نفت</th>
             <th>درآمد</th>
@@ -1001,11 +1017,23 @@ async function renderPlayers(){
 
               <td>${i+1}</td>
 
-              <td>${esc(p.country)}</td>
+              <td>
+                ${esc(p.country)}
+              </td>
 
               <td>
                 ${esc(p.name)}
                 (${esc(p.user_code)})
+              </td>
+
+              <td>
+                ${
+                  Number(p.is_ai)===1
+                  ?
+                  '<span class="badge badgeAI">🤖 AI</span>'
+                  :
+                  '<span class="badge badgeHuman">👤 انسان</span>'
+                }
               </td>
 
               <td>
@@ -1022,15 +1050,51 @@ async function renderPlayers(){
 
               <td>
 
-                <button
-                  class="btn"
-                  onclick="changeCountry(
-                    ${p.id},
-                    '${esc(p.country)}'
-                  )"
-                >
-                  تغییر کشور
-                </button>
+                <div class="actions">
+
+                  <button
+                    class="btn"
+                    onclick="changeCountry(
+                      ${p.id},
+                      '${esc(p.country)}'
+                    )"
+                  >
+                    تغییر کشور
+                  </button>
+
+                  ${
+                    Number(p.is_ai)===1
+
+                    ?
+
+                    `
+                    <button
+                      class="btn aiOff"
+                      onclick="toggleAI(
+                        ${p.id},
+                        false
+                      )"
+                    >
+                      🤖 خاموش کردن AI
+                    </button>
+                    `
+
+                    :
+
+                    `
+                    <button
+                      class="btn aiOn"
+                      onclick="toggleAI(
+                        ${p.id},
+                        true
+                      )"
+                    >
+                      🤖 فعال کردن AI
+                    </button>
+                    `
+                  }
+
+                </div>
 
               </td>
 
@@ -1056,6 +1120,48 @@ async function renderPlayers(){
 }
 
 
+/* AI TOGGLE */
+
+async function toggleAI(id,enabled){
+
+  const text=enabled
+    ?'کنترل این کشور به AI سپرده شود؟'
+    :'AI این کشور خاموش شود و کنترل انسانی فعال شود؟';
+
+  if(!confirm(text)){
+    return;
+  }
+
+  try{
+
+    const r=await api(
+      '/api/admin/players/'+id,
+      {
+        method:'PUT',
+        headers:H(),
+        body:JSON.stringify({
+          action:'ai',
+          enabled
+        })
+      }
+    );
+
+    alert(r.message||'تغییر انجام شد');
+
+    renderPlayers();
+
+  }catch(e){
+
+    alert(
+      e.message||
+      'خطا در تغییر وضعیت AI'
+    );
+
+  }
+
+}
+
+
 async function changeCountry(id,c){
 
   const n=prompt(
@@ -1073,11 +1179,8 @@ async function changeCountry(id,c){
         method:'PUT',
         headers:H(),
         body:JSON.stringify({
-
           action:'country',
-
           country:n
-
         })
       }
     );
@@ -1105,14 +1208,10 @@ async function renderGrant(){
 
     players=await api(
       '/api/admin/players',
-      {
-        headers:H()
-      }
+      {headers:H()}
     );
 
-    catalog=await api(
-      '/api/catalog'
-    );
+    catalog=await api('/api/catalog');
 
     const opts=[
       ['dollars','دلار'],
@@ -1130,7 +1229,6 @@ async function renderGrant(){
         x.key,
         x.name
       ])
-
     ];
 
     $('grant').innerHTML=`
@@ -1147,11 +1245,9 @@ async function renderGrant(){
           players.map(p=>`
 
             <option value="${p.id}">
-
               ${esc(p.country)}
               —
               ${esc(p.name)}
-
             </option>
 
           `).join('')
@@ -1165,9 +1261,7 @@ async function renderGrant(){
           opts.map(x=>`
 
             <option value="${esc(x[0])}">
-
               ${esc(x[1])}
-
             </option>
 
           `).join('')
@@ -1210,71 +1304,37 @@ async function grant(){
 
   try{
 
-    const playerEl=$('gPlayer');
-    const kindEl=$('gKind');
-    const qtyEl=$('gQty');
-
-    if(!playerEl){
-
-      throw Error(
-        'لیست بازیکنان پیدا نشد'
-      );
-
-    }
-
-    if(!kindEl){
-
-      throw Error(
-        'لیست تجهیزات پیدا نشد'
-      );
-
-    }
-
-    if(!qtyEl){
-
-      throw Error(
-        'قسمت تعداد پیدا نشد'
-      );
-
-    }
-
     const player_id=
-      Number(playerEl.value);
+      Number($('gPlayer').value);
 
     const kind=
-      kindEl.value;
+      $('gKind').value;
 
     const quantity=
-      Number(qtyEl.value);
+      Number($('gQty').value);
 
     if(
       !Number.isInteger(player_id)||
       player_id<1
     ){
-
       throw Error(
         'بازیکن را انتخاب کنید.'
       );
-
     }
 
     if(!kind){
-
       throw Error(
         'دارایی را انتخاب کنید.'
       );
-
     }
 
     if(
       !Number.isInteger(quantity)||
       quantity<1
     ){
-
       throw Error(
         'تعداد باید حداقل ۱ باشد.'
       );
-
     }
 
     await api(
@@ -1283,27 +1343,14 @@ async function grant(){
         method:'POST',
         headers:H(),
         body:JSON.stringify({
-
           player_id,
-
           kind,
-
           quantity
-
         })
       }
     );
 
-    alert(
-      'اعطا شد'
-    );
-
-    players=await api(
-      '/api/admin/players',
-      {
-        headers:H()
-      }
-    );
+    alert('اعطا شد');
 
     renderGrant();
 
@@ -1327,9 +1374,7 @@ async function renderTransactions(){
 
     const r=await api(
       '/api/admin/transactions',
-      {
-        headers:H()
-      }
+      {headers:H()}
     );
 
     $('transactions').innerHTML=`
@@ -1359,33 +1404,19 @@ async function renderTransactions(){
 
             <tr>
 
-              <td>
-                ${esc(x.tx_code)}
-              </td>
+              <td>${esc(x.tx_code)}</td>
 
-              <td>
-                ${esc(x.country||'-')}
-              </td>
+              <td>${esc(x.country||'-')}</td>
 
-              <td>
-                ${esc(x.type)}
-              </td>
+              <td>${esc(x.type)}</td>
 
-              <td>
-                ${esc(x.description)}
-              </td>
+              <td>${esc(x.description)}</td>
 
-              <td>
-                ${fmt(x.quantity)}
-              </td>
+              <td>${fmt(x.quantity)}</td>
 
-              <td>
-                $${fmt(x.amount)}
-              </td>
+              <td>$${fmt(x.amount)}</td>
 
-              <td>
-                ${esc(x.created_at)}
-              </td>
+              <td>${esc(x.created_at)}</td>
 
             </tr>
 
@@ -1418,9 +1449,7 @@ async function renderBattles(mode){
     const r=(
       await api(
         '/api/admin/battles',
-        {
-          headers:H()
-        }
+        {headers:H()}
       )
     ).filter(
       x=>x.mode===mode
@@ -1529,11 +1558,7 @@ async function renderBattles(mode){
 }
 
 
-async function review(
-  id,
-  approved,
-  mode
-){
+async function review(id,approved,mode){
 
   try{
 
@@ -1573,9 +1598,7 @@ async function renderSettings(){
 
     <div class="box">
 
-      <h2>
-        🔥 مدیریت جنگ
-      </h2>
+      <h2>🔥 مدیریت جنگ</h2>
 
       <p>
 
@@ -1622,9 +1645,7 @@ async function renderSettings(){
         "
       >
 
-      <h2>
-        ₿ قیمت بیت‌کوین
-      </h2>
+      <h2>₿ قیمت بیت‌کوین</h2>
 
       <input
         id="btc"
@@ -1689,11 +1710,9 @@ async function setBtc(){
       !Number.isFinite(price)||
       price<0
     ){
-
       throw Error(
         'قیمت واردشده صحیح نیست.'
       );
-
     }
 
     await api(
@@ -1731,13 +1750,11 @@ function esc(v){
   ).replace(
     /[&<>"']/g,
     c=>({
-
       '&':'&amp;',
       '<':'&lt;',
       '>':'&gt;',
       '"':'&quot;',
       "'":'&#39;'
-
     }[c])
   );
 
@@ -1760,7 +1777,6 @@ function esc(v){
     );
 
     showDash();
-
     openView('users');
 
   }catch{
