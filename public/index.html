@@ -19,9 +19,7 @@
  --m:#8e9b9f;
  --w:#f2f6f3
 }
-
 *{box-sizing:border-box}
-
 body{
  margin:0;
  background:
@@ -32,7 +30,6 @@ body{
  font-family:Vazirmatn,Tahoma,sans-serif;
  min-height:100vh
 }
-
 body:before{
  content:"";
  position:fixed;
@@ -44,12 +41,7 @@ body:before{
  linear-gradient(transparent 49%,#fff 50%,transparent 51%);
  background-size:80px 80px
 }
-
-.wrap{
- width:min(1150px,92%);
- margin:auto
-}
-
+.wrap{width:min(1150px,92%);margin:auto}
 header{
  position:sticky;
  top:0;
@@ -58,25 +50,16 @@ header{
  backdrop-filter:blur(14px);
  border-bottom:1px solid #8dff9a22
 }
-
 .nav{
  height:70px;
  display:flex;
  align-items:center;
  justify-content:space-between
 }
-
-.brand{
- font-weight:900;
- color:var(--g);
- letter-spacing:1px
-}
-
+.brand{font-weight:900;color:var(--g);letter-spacing:1px}
 .brand span{color:var(--y)}
-
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
-
 .btn,.account{
  border:1px solid #39484f;
  background:#11191d;
@@ -84,33 +67,16 @@ button{cursor:pointer}
  border-radius:11px;
  padding:10px 15px
 }
-
-.btn:hover,.account:hover{
- border-color:var(--g)
-}
-
+.btn:hover,.account:hover{border-color:var(--g)}
 .primary{
  background:var(--g);
  color:#061009;
  border:0;
  font-weight:900
 }
-
-.primary:disabled{
- opacity:.5;
- cursor:not-allowed
-}
-
-.danger{
- border-color:#ff596855;
- color:#ff9aa4
-}
-
-.hero{
- text-align:center;
- padding:78px 0 40px
-}
-
+.primary:disabled{opacity:.5;cursor:not-allowed}
+.danger{border-color:#ff596855;color:#ff9aa4}
+.hero{text-align:center;padding:78px 0 40px}
 .badge{
  display:inline-flex;
  gap:8px;
@@ -122,7 +88,6 @@ button{cursor:pointer}
  padding:8px 14px;
  font-size:13px
 }
-
 .dot{
  width:8px;
  height:8px;
@@ -130,59 +95,36 @@ button{cursor:pointer}
  background:var(--g);
  box-shadow:0 0 12px var(--g)
 }
-
 h1{
  font-size:clamp(42px,8vw,82px);
  margin:22px 0 12px;
  line-height:1;
  font-weight:900
 }
-
 h1 span{color:var(--g)}
-
-.lead,.muted{
- color:var(--m);
- line-height:2
-}
-
-.cards,.tiles,.store,.stats{
- display:grid;
- gap:15px
-}
-
-.cards{
- grid-template-columns:repeat(3,1fr)
-}
-
+.lead,.muted{color:var(--m);line-height:2}
+.cards,.tiles,.store,.stats{display:grid;gap:15px}
+.cards{grid-template-columns:repeat(3,1fr)}
 .card,.tile,.box{
  background:linear-gradient(145deg,#151f23f5,#0a0f11f5);
  border:1px solid var(--line);
  border-radius:19px;
  padding:24px
 }
-
 .card{
  min-height:190px;
  cursor:pointer;
  transition:.2s
 }
-
 .card:hover,.tile:hover{
  transform:translateY(-4px);
  border-color:#8dff9a66
 }
-
 .card h2{font-size:21px}
 .live h2{color:var(--g)}
 .next h2{color:var(--y)}
-
-.section{
- display:none;
- padding:35px 0 70px
-}
-
+.section{display:none;padding:35px 0 70px}
 .section.active{display:block}
-
 .head{
  display:flex;
  justify-content:space-between;
@@ -190,68 +132,45 @@ h1 span{color:var(--g)}
  gap:10px;
  margin-bottom:18px
 }
-
 .head h2{margin:0}
-
-.tiles{
- grid-template-columns:repeat(3,1fr)
-}
-
+.tiles{grid-template-columns:repeat(3,1fr)}
 .tile{cursor:pointer}
 .tile .ico{font-size:32px}
-
 .stats{
  grid-template-columns:repeat(4,1fr);
  margin:15px 0
 }
-
 .stat{
  background:#0d1417;
  border:1px solid var(--line);
  border-radius:14px;
  padding:15px
 }
-
 .stat small{
  display:block;
  color:var(--m);
  margin-bottom:6px
 }
-
-.stat b{
- font-size:19px;
- color:var(--g)
-}
-
-.store{
- grid-template-columns:repeat(2,1fr)
-}
-
+.stat b{font-size:19px;color:var(--g)}
+.store{grid-template-columns:repeat(2,1fr)}
 .store-card{
  background:#0e1518;
  border:1px solid var(--line);
  border-radius:15px;
  padding:16px
 }
-
 .store-top{
  display:flex;
  justify-content:space-between;
  gap:10px
 }
-
-.price{
- color:var(--y);
- font-weight:900
-}
-
+.price{color:var(--y);font-weight:900}
 .qty{
  display:flex;
  align-items:center;
  gap:8px;
  margin-top:12px
 }
-
 .qty button{
  width:36px;
  height:36px;
@@ -260,13 +179,11 @@ h1 span{color:var(--g)}
  color:#fff;
  border-radius:9px
 }
-
 .qty span{
  min-width:35px;
  text-align:center;
  font-weight:900
 }
-
 .buy{
  width:100%;
  margin-top:10px;
@@ -277,18 +194,12 @@ h1 span{color:var(--g)}
  color:#061009;
  font-weight:900
 }
-
-.assetcat{
- color:var(--y);
- margin:22px 0 10px
-}
-
+.assetcat{color:var(--y);margin:22px 0 10px}
 .assets{
  display:grid;
  grid-template-columns:repeat(2,1fr);
  gap:9px
 }
-
 .asset{
  display:flex;
  justify-content:space-between;
@@ -297,8 +208,6 @@ h1 span{color:var(--g)}
  border-radius:10px;
  padding:10px
 }
-
-/* سبد خرید */
 .buy-cart{
  margin-top:20px;
  padding:18px;
@@ -306,12 +215,7 @@ h1 span{color:var(--g)}
  border:1px solid #8dff9a33;
  border-radius:15px
 }
-
-.buy-cart h3{
- margin-top:0;
- color:var(--g)
-}
-
+.buy-cart h3{margin-top:0;color:var(--g)}
 .buy-cart-row{
  display:flex;
  align-items:center;
@@ -320,15 +224,8 @@ h1 span{color:var(--g)}
  padding:10px 0;
  border-bottom:1px solid #202a2f
 }
-
-.buy-cart-row:last-child{
- border-bottom:0
-}
-
-.buy-cart-row small{
- color:var(--m)
-}
-
+.buy-cart-row:last-child{border-bottom:0}
+.buy-cart-row small{color:var(--m)}
 .buy-cart-total{
  margin-top:14px;
  padding-top:14px;
@@ -339,7 +236,6 @@ h1 span{color:var(--g)}
  color:var(--y);
  font-weight:900
 }
-
 .buy-all{
  width:100%;
  margin-top:12px;
@@ -350,53 +246,36 @@ h1 span{color:var(--g)}
  color:#061009;
  font-weight:900
 }
-
-.buy-all:disabled{
- opacity:.5;
- cursor:not-allowed
-}
-
+.buy-all:disabled{opacity:.5;cursor:not-allowed}
 .table{
  overflow:auto;
  border:1px solid var(--line);
  border-radius:14px
 }
-
 .table table{
  width:100%;
  border-collapse:collapse;
  min-width:650px
 }
-
 .table th,.table td{
  padding:12px;
  border-bottom:1px solid #202a2f;
  text-align:right
 }
-
-.table th{
- color:var(--g);
- background:#121a1e
-}
-
+.table th{color:var(--g);background:#121a1e}
 .formgrid{
  display:grid;
  grid-template-columns:1fr 1fr;
  gap:10px
 }
-
 .field{margin:8px 0}
-
 .field label{
  display:block;
  color:var(--m);
  font-size:13px;
  margin-bottom:5px
 }
-
-.field input,
-.field select,
-.field textarea{
+.field input,.field select,.field textarea{
  width:100%;
  padding:12px;
  background:#080d0f;
@@ -404,16 +283,13 @@ h1 span{color:var(--g)}
  border:1px solid #344249;
  border-radius:10px
 }
-
 .field textarea{min-height:150px}
-
 .actions{
  display:flex;
  gap:9px;
  flex-wrap:wrap;
  margin-top:12px
 }
-
 .modal{
  position:fixed;
  inset:0;
@@ -425,9 +301,7 @@ h1 span{color:var(--g)}
  padding:18px;
  z-index:100
 }
-
 .modal.show{display:flex}
-
 .modalbox{
  width:min(720px,100%);
  max-height:92vh;
@@ -437,7 +311,6 @@ h1 span{color:var(--g)}
  border-radius:20px;
  padding:25px
 }
-
 .toast{
  position:fixed;
  bottom:18px;
@@ -450,22 +323,15 @@ h1 span{color:var(--g)}
  z-index:200;
  max-width:90%
 }
-
 .error{color:#ff9aa4}
 .success{color:var(--g)}
-
 footer{
  border-top:1px solid var(--line);
  padding:24px 0;
  color:#657176;
  text-align:center
 }
-
-.loading{
- opacity:.7;
- pointer-events:none
-}
-
+.loading{opacity:.7;pointer-events:none}
 @media(max-width:800px){
  .cards,.tiles,.store{grid-template-columns:1fr}
  .stats{grid-template-columns:1fr 1fr}
@@ -480,12 +346,7 @@ footer{
 <header>
  <div class="wrap nav">
   <div class="brand">POWER <span>OF WAR</span></div>
-
-  <button
-   class="account"
-   type="button"
-   onclick="openAccount()"
-  >
+  <button class="account" type="button" onclick="openAccount()">
    👤 حساب کاربری
   </button>
  </div>
@@ -494,18 +355,14 @@ footer{
 <main class="wrap">
 
 <section id="home" class="hero">
-
  <div class="badge">
   <span class="dot"></span>
   سیزن ۸ • جنگ جهانی سوم • درحال اجرا
  </div>
-
  <h1>POWER <span>OF WAR</span></h1>
-
  <p class="lead">
   سیزن هشتم؛ میدان رقابت دولت‌ها، اقتصاد، تجهیزات و سناریوهای جنگی.
  </p>
-
 </section>
 
 <section id="cards" class="cards">
@@ -519,9 +376,7 @@ footer{
  <article class="card live" onclick="show('live')">
   <small class="muted">LIVE / 08</small>
   <h2>🌍 سیزن ۸: جنگ جهانی سوم</h2>
-  <p class="muted">
-   ورود به بازی، دولت‌ها، فروشگاه و جنگ.
-  </p>
+  <p class="muted">ورود به بازی، دولت‌ها، فروشگاه و جنگ.</p>
  </article>
 
  <article class="card next" onclick="show('next')">
@@ -541,57 +396,16 @@ footer{
 
  <div class="table">
   <table>
-   <tr>
-    <th>سیزن</th>
-    <th>عنوان</th>
-    <th>نتیجه</th>
-   </tr>
-
-   <tr>
-    <td>۱</td>
-    <td>جنگ جهانی دوم</td>
-    <td>برنده: شوروی</td>
-   </tr>
-
-   <tr>
-    <td>۲</td>
-    <td>رول پلی</td>
-    <td>برنده: هلینا</td>
-   </tr>
-
-   <tr>
-    <td>۳</td>
-    <td>جنگ جهانی سوم</td>
-    <td>برنده: روسیه</td>
-   </tr>
-
-   <tr>
-    <td>۴</td>
-    <td>جنگ جهانی سوم</td>
-    <td>برنده: آمریکا</td>
-   </tr>
-
-   <tr>
-    <td>۵</td>
-    <td>جنگ های سلسله ای</td>
-    <td>لغو شده</td>
-   </tr>
-
-   <tr>
-    <td>۶</td>
-    <td>جنگ جهانی سوم</td>
-    <td>برنده: آمریکا</td>
-   </tr>
-
-   <tr>
-    <td>۷</td>
-    <td>رول پلی</td>
-    <td>لغو شده</td>
-   </tr>
-
+   <tr><th>سیزن</th><th>عنوان</th><th>نتیجه</th></tr>
+   <tr><td>۱</td><td>جنگ جهانی دوم</td><td>برنده: شوروی</td></tr>
+   <tr><td>۲</td><td>رول پلی</td><td>برنده: هلینا</td></tr>
+   <tr><td>۳</td><td>جنگ جهانی سوم</td><td>برنده: روسیه</td></tr>
+   <tr><td>۴</td><td>جنگ جهانی سوم</td><td>برنده: آمریکا</td></tr>
+   <tr><td>۵</td><td>جنگ های سلسله ای</td><td>لغو شده</td></tr>
+   <tr><td>۶</td><td>جنگ جهانی سوم</td><td>برنده: آمریکا</td></tr>
+   <tr><td>۷</td><td>رول پلی</td><td>لغو شده</td></tr>
   </table>
  </div>
-
 </section>
 
 <section id="live" class="section">
@@ -606,103 +420,72 @@ footer{
   <div class="tile" onclick="openAccount('season')">
    <div class="ico">🔐</div>
    <h3>ورود به سیزن</h3>
-   <p class="muted">
-    با کد کاربری POW وارد دولت خود شوید.
-   </p>
+   <p class="muted">با کد کاربری POW وارد دولت خود شوید.</p>
   </div>
 
   <div class="tile" onclick="loadGovernments()">
    <div class="ico">🌐</div>
    <h3>مشاهده دارایی دولت‌ها</h3>
-   <p class="muted">
-    کشور را انتخاب کنید و اطلاعات عمومی آن را ببینید.
-   </p>
+   <p class="muted">کشور را انتخاب کنید و اطلاعات عمومی آن را ببینید.</p>
   </div>
 
   <div class="tile" onclick="openAccount()">
    <div class="ico">👤</div>
    <h3>حساب کاربری</h3>
-   <p class="muted">
-    اطلاعات حساب مجموعه را مشاهده کنید.
-   </p>
+   <p class="muted">اطلاعات حساب مجموعه را مشاهده کنید.</p>
   </div>
 
  </div>
-
 </section>
 
 <section id="next" class="section">
-
  <div class="head">
   <h2>سیزن ۹</h2>
   <button class="btn" type="button" onclick="home()">بازگشت</button>
  </div>
-
  <div class="box">
   <p class="lead">نامشخص</p>
  </div>
-
 </section>
 
 <section id="governments" class="section">
-
  <div class="head">
   <h2>🌐 دولت‌ها</h2>
   <button class="btn" type="button" onclick="show('live')">بازگشت</button>
  </div>
-
  <div id="govList"></div>
-
 </section>
 
 <section id="gov" class="section">
-
  <div class="head">
   <h2 id="govName">دولت</h2>
   <button class="btn" type="button" onclick="loadGovernments()">بازگشت</button>
  </div>
-
  <div id="govBody"></div>
-
 </section>
 
 <section id="season" class="section">
 
  <div class="head">
   <h2>⚔️ سیزن ۸ — <span id="countryTitle"></span></h2>
-
-  <button
-   class="btn"
-   type="button"
-   onclick="seasonLogout()"
-  >
-   خروج از سیزن
-  </button>
+  <button class="btn" type="button" onclick="seasonLogout()">خروج از سیزن</button>
  </div>
 
  <div id="seasonBody"></div>
 
 </section>
 
-<footer>
- © POWER OF WAR — Season 8
-</footer>
+<footer>© POWER OF WAR — Season 8</footer>
 
 </main>
 
-<div
- id="accountModal"
- class="modal"
- onclick="if(event.target===this)closeAccount()"
->
+<div id="accountModal" class="modal" onclick="if(event.target===this)closeAccount()">
 
  <div class="modalbox">
 
   <h2>👤 حساب کاربری</h2>
 
-  <p class="muted">
-   کد کاربری خود را وارد کنید.
-  </p>
+  <p class="muted">کد کاربری خود را وارد کنید.</p>
 
   <div class="field">
    <input
@@ -720,15 +503,9 @@ footer{
    type="button"
    style="width:100%"
    onclick="accountLogin()"
-  >
-   ورود
-  </button>
+  >ورود</button>
 
-  <div
-   id="accountMsg"
-   class="muted"
-   style="margin-top:10px;min-height:25px"
-  ></div>
+  <div id="accountMsg" class="muted" style="margin-top:10px;min-height:25px"></div>
 
   <div id="accountResult"></div>
 
@@ -737,9 +514,7 @@ footer{
    type="button"
    style="margin-top:10px"
    onclick="closeAccount()"
-  >
-   بازگشت
-  </button>
+  >بازگشت</button>
 
  </div>
 </div>
@@ -759,8 +534,8 @@ let seasonCode =
 let me = null;
 let catalog = null;
 
-/* سبد خرید */
 let purchaseCart = {};
+let currentStoreCategory = null;
 
 
 /* -----------------------------
@@ -780,13 +555,11 @@ function esc(v){
  );
 }
 
-
 function toast(message,bad=false){
 
  const t = $('toast');
 
  t.textContent = message;
-
  t.style.display = 'block';
 
  t.style.borderColor =
@@ -798,7 +571,6 @@ function toast(message,bad=false){
   t.style.display = 'none';
  },3000);
 }
-
 
 async function req(url,opt={}){
 
@@ -848,7 +620,6 @@ function show(id){
  });
 }
 
-
 function home(){
 
  document
@@ -881,13 +652,9 @@ function openAccount(mode=''){
  $('codeInput').focus();
 }
 
-
 function closeAccount(){
-
  $('accountModal').classList.remove('show');
-
 }
-
 
 async function accountLogin(){
 
@@ -926,30 +693,15 @@ async function accountLogin(){
   $('accountResult').innerHTML = `
    <div class="box" style="margin-top:15px">
 
-    <p>
-     <b>نام:</b>
-     ${esc(d.name)}
-    </p>
+    <p><b>نام:</b> ${esc(d.name)}</p>
 
-    <p>
-     <b>کد:</b>
-     ${esc(d.code)}
-    </p>
+    <p><b>کد:</b> ${esc(d.code)}</p>
 
-    <p>
-     <b>تاریخ وفاداری:</b>
-     ${esc(d.loyalty_date || '-')}
-    </p>
+    <p><b>تاریخ وفاداری:</b> ${esc(d.loyalty_date || '-')}</p>
 
-    <p>
-     <b>کل بازی‌ها:</b>
-     ${fmt(d.total_games)}
-    </p>
+    <p><b>کل بازی‌ها:</b> ${fmt(d.total_games)}</p>
 
-    <p>
-     <b>پیروزی‌ها:</b>
-     ${fmt(d.victories)}
-    </p>
+    <p><b>پیروزی‌ها:</b> ${fmt(d.victories)}</p>
 
     ${
      $('accountModal').dataset.mode === 'season'
@@ -960,9 +712,7 @@ async function accountLogin(){
        type="button"
        style="width:100%;margin-top:8px"
        onclick="enterSeason()"
-      >
-       ورود به سیزن ۸
-      </button>
+      >ورود به سیزن ۸</button>
      `
      :
      ''
@@ -984,7 +734,6 @@ async function accountLogin(){
   button.textContent='ورود';
 
  }
-
 }
 
 
@@ -1034,9 +783,7 @@ async function enterSeason(){
    '</span>';
 
  }
-
 }
-
 
 async function loadSeason(){
 
@@ -1060,7 +807,6 @@ async function loadSeason(){
  }catch(e){
 
   seasonCode='';
-
   me=null;
 
   sessionStorage.removeItem('s8_code');
@@ -1068,7 +814,6 @@ async function loadSeason(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -1112,66 +857,45 @@ async function renderSeason(){
 
   <div class="tiles">
 
-   <div class="tile"
-    onclick="openStore()">
+   <div class="tile" onclick="openStore()">
     <div class="ico">🛒</div>
     <h3>فروشگاه</h3>
-    <p class="muted">
-     خرید تجهیزات و دارایی‌های درآمدزا
-    </p>
+    <p class="muted">خرید تجهیزات و دارایی‌های درآمدزا</p>
    </div>
 
-   <div class="tile"
-    onclick="openTransfer()">
+   <div class="tile" onclick="openTransfer()">
     <div class="ico">🔄</div>
     <h3>انتقال دارایی</h3>
-    <p class="muted">
-     حداکثر ۳ انتقال در روز
-    </p>
+    <p class="muted">حداکثر ۳ انتقال در روز</p>
    </div>
 
-   <div class="tile"
-    onclick="openBattle()">
+   <div class="tile" onclick="openBattle()">
     <div class="ico">⚔️</div>
     <h3>جنگ / دفاع</h3>
-    <p class="muted">
-     ارسال سناریوی جنگی یا دفاعی
-    </p>
+    <p class="muted">ارسال سناریوی جنگی یا دفاعی</p>
    </div>
 
-   <div class="tile"
-    onclick="renderMyAssets()">
+   <div class="tile" onclick="renderMyAssets()">
     <div class="ico">🎒</div>
     <h3>دارایی‌های من</h3>
-    <p class="muted">
-     مشاهده کامل تجهیزات
-    </p>
+    <p class="muted">مشاهده کامل تجهیزات</p>
    </div>
 
-   <div class="tile"
-    onclick="renderTx()">
+   <div class="tile" onclick="renderTx()">
     <div class="ico">💳</div>
     <h3>تراکنش‌ها</h3>
-    <p class="muted">
-     تاریخچه خریدها و درآمد
-    </p>
+    <p class="muted">تاریخچه خریدها و درآمد</p>
    </div>
 
    <div class="tile">
     <div class="ico">₿</div>
     <h3>بیت‌کوین</h3>
-    <p class="muted">
-     قیمت مرکزی:
-     $${fmt(s.bitcoin_price)}
-    </p>
+    <p class="muted">قیمت مرکزی: $${fmt(s.bitcoin_price)}</p>
    </div>
 
   </div>
 
-  <div
-   id="seasonExtra"
-   style="margin-top:18px"
-  ></div>
+  <div id="seasonExtra" style="margin-top:18px"></div>
  `;
 }
 
@@ -1194,7 +918,6 @@ async function ensureCatalog(){
   );
 
  }
-
 }
 
 
@@ -1228,10 +951,7 @@ async function renderMyAssets(){
     catalog.equipment[cat] || [];
 
    h += `
-    <h3 class="assetcat">
-     ${title}
-    </h3>
-
+    <h3 class="assetcat">${title}</h3>
     <div class="assets">
    `;
 
@@ -1276,46 +996,36 @@ async function renderMyAssets(){
   }
 
   h += `
-   <h3 class="assetcat">
-    🏭 دارایی‌های درآمدزا
-   </h3>
+   <h3 class="assetcat">🏭 دارایی‌های درآمدزا</h3>
 
    <div class="assets">
-
     ${
      incomeHtml ||
      '<p class="muted">هنوز دارایی درآمدزا ندارید.</p>'
     }
-
    </div>
   `;
 
   $('seasonExtra').innerHTML =
-   '<div class="box">' +
-   h +
-   '</div>';
+   '<div class="box">' + h + '</div>';
 
  }catch(e){
 
   toast(e.message,true);
 
  }
-
 }
 
 
 /* -----------------------------
-   فروشگاه
+   فروشگاه — دسته‌بندی جدید
 ----------------------------- */
 
-async function openStore(){
+async function openStore(category=null){
 
  try{
 
   await ensureCatalog();
-
-  let h =
-   '<div class="box"><h2>🛒 فروشگاه</h2>';
 
   const titles = {
    missiles:'🚀 موشک‌ها',
@@ -1323,49 +1033,134 @@ async function openStore(){
    defense:'🛡️ پدافندها',
    fighters:'✈️ جنگنده‌ها',
    bombers:'💣 بمب‌افکن‌ها',
-   ships:'🚢 ناوها'
+   ships:'🚢 ناوها',
+   income:'🏭 دارایی‌های درآمدزا'
   };
 
-  for(
-   const [cat,rows]
-   of Object.entries(catalog.equipment)
-  ){
+  const categories = [
+   ['missiles',titles.missiles],
+   ['military',titles.military],
+   ['defense',titles.defense],
+   ['fighters',titles.fighters],
+   ['bombers',titles.bombers],
+   ['ships',titles.ships],
+   ['income',titles.income]
+  ];
+
+  currentStoreCategory = category || null;
+
+  let h =
+   '<div class="box"><h2>🛒 فروشگاه</h2>';
+
+  if(!currentStoreCategory){
 
    h += `
-    <h3 class="assetcat">
-     ${titles[cat] || cat}
-    </h3>
+    <p class="muted">
+     دسته‌بندی موردنظر را انتخاب کنید.
+    </p>
 
-    <div class="store">
+    <div class="tiles">
    `;
 
-   for(const x of rows){
+   for(const [key,title] of categories){
 
-    h += storeCard(x,false);
+    const icon =
+     title.substring(
+      0,
+      title.indexOf(' ')
+     );
+
+    const name =
+     title.substring(
+      title.indexOf(' ')+1
+     );
+
+    h += `
+     <div
+      class="tile"
+      onclick="openStore('${key}')"
+      style="cursor:pointer"
+     >
+      <div class="ico">${icon}</div>
+      <h3>${esc(name)}</h3>
+      <p class="muted">مشاهده و خرید</p>
+     </div>
+    `;
+   }
+
+   h += `</div>`;
+
+  }else{
+
+   const title =
+    titles[currentStoreCategory] ||
+    currentStoreCategory;
+
+   h += `
+    <div
+     style="
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap
+     "
+    >
+     <h3 class="assetcat" style="margin:0">
+      ${title}
+     </h3>
+
+     <button
+      class="btn"
+      type="button"
+      onclick="openStore()"
+     >
+      ← بازگشت
+     </button>
+    </div>
+   `;
+
+   if(currentStoreCategory === 'income'){
+
+    h += `
+     <div class="store">
+      ${(catalog.income || [])
+       .map(x=>storeCard(x,true))
+       .join('')}
+     </div>
+    `;
+
+   }else{
+
+    const rows =
+     catalog.equipment[
+      currentStoreCategory
+     ] || [];
+
+    h += `
+     <div class="store">
+      ${rows.map(x=>storeCard(x,false)).join('')}
+     </div>
+    `;
 
    }
 
-   h += '</div>';
+   h += `
+    <div id="buyCart"></div>
 
+    <div style="margin-top:16px">
+     <button
+      class="btn"
+      type="button"
+      onclick="openStore()"
+     >
+      ← بازگشت به دسته‌بندی‌ها
+     </button>
+    </div>
+   `;
   }
 
-  h += `
-   <h3 class="assetcat">
-    🏭 دارایی‌های درآمدزا
-   </h3>
-
-   <div class="store">
-    ${
-     (catalog.income || [])
-     .map(x=>storeCard(x,true))
-     .join('')
-    }
-   </div>
-
-   <div id="buyCart"></div>
-
-   </div>
-  `;
+  h += '</div>';
 
   $('seasonExtra').innerHTML=h;
 
@@ -1376,7 +1171,6 @@ async function openStore(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -1414,18 +1208,16 @@ function storeCard(x,income){
     <button
      type="button"
      onclick="changeQ('${x.key}',-1)"
-    >
-     −
-    </button>
+    >−</button>
 
-    <span id="q_${x.key}">${current}</span>
+    <span id="q_${x.key}">
+     ${current}
+    </span>
 
     <button
      type="button"
      onclick="changeQ('${x.key}',1)"
-    >
-     +
-    </button>
+    >+</button>
 
    </div>
 
@@ -1461,17 +1253,12 @@ function changeQ(k,d){
  e.textContent=q;
 
  if(q>=2){
-
   purchaseCart[k]=q;
-
  }else{
-
   delete purchaseCart[k];
-
  }
 
  renderBuyCart();
-
 }
 
 
@@ -1495,7 +1282,6 @@ function renderBuyCart(){
 
  let html=`
   <div class="buy-cart">
-
    <h3>🛒 خریدهای انتخاب‌شده</h3>
  `;
 
@@ -1519,9 +1305,7 @@ function renderBuyCart(){
 
     <span>
      <b>${esc(item.name)}</b>
-     <small>
-      × ${fmt(qty)}
-     </small>
+     <small>× ${fmt(qty)}</small>
     </span>
 
     <b class="price">
@@ -1530,7 +1314,6 @@ function renderBuyCart(){
 
    </div>
   `;
-
  }
 
  html+=`
@@ -1557,20 +1340,25 @@ function renderBuyCart(){
 
 function META_FROM_CATALOG(key){
 
- for(const rows of Object.values(catalog?.equipment || {})){
+ for(
+  const rows
+  of Object.values(catalog?.equipment || {})
+ ){
 
   const x =
    rows.find(item=>item.key===key);
 
   if(x) return x;
-
  }
 
  return (catalog?.income || [])
   .find(item=>item.key===key) || null;
-
 }
 
+
+/* -----------------------------
+   خرید تکی
+----------------------------- */
 
 async function buy(k){
 
@@ -1614,7 +1402,9 @@ async function buy(k){
 
   await loadSeason();
 
-  await openStore();
+  await openStore(
+   currentStoreCategory
+  );
 
   requestAnimationFrame(()=>{
    window.scrollTo(
@@ -1628,9 +1418,12 @@ async function buy(k){
   toast(e.message,true);
 
  }
-
 }
 
+
+/* -----------------------------
+   خرید همه
+----------------------------- */
 
 async function buyAll(){
 
@@ -1655,7 +1448,8 @@ async function buyAll(){
   return;
  }
 
- const button=$('buyAllButton');
+ const button =
+  $('buyAllButton');
 
  if(button){
 
@@ -1682,14 +1476,17 @@ async function buyAll(){
    });
 
   toast(
-   d.message || 'خرید کل با موفقیت انجام شد.'
+   d.message ||
+   'خرید کل با موفقیت انجام شد.'
   );
 
   purchaseCart={};
 
   await loadSeason();
 
-  await openStore();
+  await openStore(
+   currentStoreCategory
+  );
 
   requestAnimationFrame(()=>{
    window.scrollTo(
@@ -1708,9 +1505,7 @@ async function buyAll(){
    button.textContent='خرید همه';
 
   }
-
  }
-
 }
 
 
@@ -1847,7 +1642,6 @@ async function openTransfer(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -1865,22 +1659,12 @@ async function transfer(){
    Number($('trQty').value);
 
   if(!to){
-
-   toast(
-    'کشور گیرنده را انتخاب کنید.',
-    true
-   );
-
+   toast('کشور گیرنده را انتخاب کنید.',true);
    return;
   }
 
   if(to===me?.country){
-
-   toast(
-    'نمی‌توانید به کشور خودتان انتقال دهید.',
-    true
-   );
-
+   toast('نمی‌توانید به کشور خودتان انتقال دهید.',true);
    return;
   }
 
@@ -1888,12 +1672,7 @@ async function transfer(){
    !Number.isSafeInteger(quantity) ||
    quantity<1
   ){
-
-   toast(
-    'تعداد نامعتبر است.',
-    true
-   );
-
+   toast('تعداد نامعتبر است.',true);
    return;
   }
 
@@ -1920,7 +1699,6 @@ async function transfer(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -2042,7 +1820,6 @@ async function openBattle(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -2104,7 +1881,6 @@ function battleAssets(){
 
   </div>
  `;
-
 }
 
 
@@ -2122,32 +1898,17 @@ async function submitBattle(){
    $('btScenario').value.trim();
 
   if(!to){
-
-   toast(
-    'کشور حریف را انتخاب کنید.',
-    true
-   );
-
+   toast('کشور حریف را انتخاب کنید.',true);
    return;
   }
 
   if(to===me?.country){
-
-   toast(
-    'نمی‌توانید کشور خودتان را انتخاب کنید.',
-    true
-   );
-
+   toast('نمی‌توانید کشور خودتان را انتخاب کنید.',true);
    return;
   }
 
   if(!scenario){
-
-   toast(
-    'سناریو را وارد کنید.',
-    true
-   );
-
+   toast('سناریو را وارد کنید.',true);
    return;
   }
 
@@ -2174,12 +1935,7 @@ async function submitBattle(){
    });
 
   if(!Object.keys(selected).length){
-
-   toast(
-    'حداقل یک تجهیز انتخاب کنید.',
-    true
-   );
-
+   toast('حداقل یک تجهیز انتخاب کنید.',true);
    return;
   }
 
@@ -2221,7 +1977,6 @@ async function submitBattle(){
   }
 
  }
-
 }
 
 
@@ -2300,7 +2055,6 @@ async function renderTx(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -2378,7 +2132,6 @@ async function loadGovernments(){
   toast(e.message,true);
 
  }
-
 }
 
 
@@ -2477,6 +2230,7 @@ function seasonLogout(){
  seasonCode='';
  me=null;
  purchaseCart={};
+ currentStoreCategory=null;
 
  sessionStorage.removeItem(
   's8_code'
@@ -2534,19 +2288,21 @@ $('codeInput').addEventListener(
 </script>
 
 <audio id="bgMusic">
-  <source src="/music.mp3" type="audio/mpeg">
+ <source src="/music.mp3" type="audio/mpeg">
 </audio>
 
 <script>
-  const music = document.getElementById("bgMusic");
-  music.volume = 0.15;
+const music =
+ document.getElementById("bgMusic");
 
-  document.addEventListener("click", () => {
-    if (music.paused) {
-      music.play().catch(() => {});
-    }
-  }, { once: true });
+music.volume = 0.15;
+
+document.addEventListener("click",()=>{
+ if(music.paused){
+  music.play().catch(()=>{});
+ }
+},{once:true});
 </script>
 
 </body>
-   </html>
+ </html>
