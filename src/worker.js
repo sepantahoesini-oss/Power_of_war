@@ -515,8 +515,6 @@ async function auth(req,env){
 
   }
 
-  /* AI کنترل انسانی ندارد */
-
   if(
     Number(p.is_ai||0)===1
   ){
@@ -726,7 +724,7 @@ async function publicPlayer(
 
 
 /* =========================================================
-   DAILY INCOME
+   DAILY INCOME — اصلاح‌شده
 ========================================================= */
 
 async function addIncome(env){
@@ -767,12 +765,32 @@ async function addIncome(env){
   if(hour!==0)
     return;
 
+  /*
+     قفل اتمیک روزانه:
+     فقط یک درخواست می‌تواند روز را claim کند.
+  */
+
+  const claim=
+    await env.DB
+      .prepare(`
+        INSERT INTO s8_settings(
+          key,
+          value
+        )
+        VALUES(?,?)
+        ON CONFLICT(key)
+        DO UPDATE SET
+          value=excluded.value
+        WHERE s8_settings.value<>excluded.value
+      `)
+      .bind(
+        'last_income_day',
+        day
+      )
+      .run();
+
   if(
-    await setting(
-      env,
-      'last_income_day',
-      ''
-    )===day
+    Number(claim.meta?.changes||0)!==1
   )
     return;
 
@@ -795,194 +813,46 @@ async function addIncome(env){
         p.id
       );
 
-    if(total>0){
+    if(total<=0)
+      continue;
 
-      await env.DB
-        .prepare(`
-          UPDATE s8_players
-          SET
-            dollars=dollars+?,
-            income_daily=?,
-            updated_at=CURRENT_TIMESTAMP
-          WHERE id=?
-        `)
-        .bind(
-          total,
-          total,
-          p.id
-        )
-        .run();
-
-      await env.DB
-        .prepare(`
-          INSERT INTO s8_transactions(
-            tx_code,
-            player_id,
-            type,
-            description,
-            amount
-          )
-          VALUES(?,?,?,?,?)
-        `)
-        .bind(
-          txCode(),
-          p.id,
-          'income',
-          'درآمد روزانه',
-          total
-        )
-        .run();
-
-    }
-
-  }
-
-  await env.DB
-    .prepare(`
-      INSERT INTO s8_settings(
-        key,
-        value
-      )
-      VALUES(?,?)
-      ON CONFLICT(key)
-      DO UPDATE SET
-        value=excluded.value
-    `)
-    .bind(
-      'last_income_day',
-      day
-    )
-    .run();
-
-      }
-/* =========================================================
-   ادامه DAILY INCOME
-========================================================= */
-
-async function addIncome(env){
-
-  const tz=
-    await setting(
-      env,
-      'timezone',
-      'Asia/Tehran'
-    );
-
-  const parts=
-    new Intl.DateTimeFormat(
-      'en-CA',
-      {
-        timeZone:tz,
-        year:'numeric',
-        month:'2-digit',
-        day:'2-digit',
-        hour:'2-digit',
-        hour12:false
-      }
-    ).formatToParts(
-      new Date()
-    );
-
-  const get=k=>
-    parts.find(
-      x=>x.type===k
-    )?.value;
-
-  const day=
-    `${get('year')}-${get('month')}-${get('day')}`;
-
-  const hour=
-    Number(get('hour'));
-
-  if(hour!==0)
-    return;
-
-  if(
-    await setting(
-      env,
-      'last_income_day',
-      ''
-    )===day
-  )
-    return;
-
-  const ps=
     await env.DB
       .prepare(`
-        SELECT id
-        FROM s8_players
-        WHERE active=1
+        UPDATE s8_players
+        SET
+          dollars=dollars+?,
+          income_daily=?,
+          updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
       `)
-      .all();
-
-  for(
-    const p of ps.results||[]
-  ){
-
-    const total=
-      await incomeTotal(
-        env,
+      .bind(
+        total,
+        total,
         p.id
-      );
+      )
+      .run();
 
-    if(total>0){
-
-      await env.DB
-        .prepare(`
-          UPDATE s8_players
-          SET
-            dollars=dollars+?,
-            income_daily=?,
-            updated_at=CURRENT_TIMESTAMP
-          WHERE id=?
-        `)
-        .bind(
-          total,
-          total,
-          p.id
+    await env.DB
+      .prepare(`
+        INSERT INTO s8_transactions(
+          tx_code,
+          player_id,
+          type,
+          description,
+          amount
         )
-        .run();
-
-      await env.DB
-        .prepare(`
-          INSERT INTO s8_transactions(
-            tx_code,
-            player_id,
-            type,
-            description,
-            amount
-          )
-          VALUES(?,?,?,?,?)
-        `)
-        .bind(
-          txCode(),
-          p.id,
-          'income',
-          'درآمد روزانه',
-          total
-        )
-        .run();
-
-    }
+        VALUES(?,?,?,?,?)
+      `)
+      .bind(
+        txCode(),
+        p.id,
+        'income',
+        'درآمد روزانه',
+        total
+      )
+      .run();
 
   }
-
-  await env.DB
-    .prepare(`
-      INSERT INTO s8_settings(
-        key,
-        value
-      )
-      VALUES(?,?)
-      ON CONFLICT(key)
-      DO UPDATE SET
-        value=excluded.value
-    `)
-    .bind(
-      'last_income_day',
-      day
-    )
-    .run();
 
 }
 
@@ -990,22 +860,6 @@ async function addIncome(env){
 /* =========================================================
    AI ENGINE
 ========================================================= */
-
-
-/*
-   حافظه AI:
-
-   {
-     purchases: 0,
-     battles: 0,
-     defense: 0,
-     last_target: 0,
-     last_action: "...",
-     preferred_category: "...",
-     risk: 0.42
-   }
-*/
-
 
 async function getAIMemory(env,p){
 
@@ -1115,7 +969,7 @@ async function aiSchedule(
 
 
 /* ---------------------------------------------------------
-   AI خرید
+   AI خرید — اصلاح‌شده
 --------------------------------------------------------- */
 
 async function aiBuy(
@@ -1138,6 +992,11 @@ async function aiBuy(
       )
     );
 
+  if(
+    !Number.isSafeInteger(quantity)
+  )
+    return false;
+
   const cost=
     meta.price*quantity;
 
@@ -1147,117 +1006,146 @@ async function aiBuy(
   )
     return false;
 
-  const id=txCode();
+  /*
+     اول پول به‌صورت اتمیک کم می‌شود.
+     این قسمت جلوی خرید همزمان و دوباره‌خرج‌کردن
+     موجودی را می‌گیرد.
+  */
 
-  if(meta.category==='income'){
-
-    await env.DB.batch([
-
-      env.DB.prepare(`
+  const debit=
+    await env.DB
+      .prepare(`
         UPDATE s8_players
         SET
           dollars=dollars-?,
           updated_at=CURRENT_TIMESTAMP
         WHERE id=?
         AND dollars>=?
-      `).bind(
+      `)
+      .bind(
         cost,
         p.id,
         cost
-      ),
-
-      env.DB.prepare(`
-        INSERT INTO s8_income_assets(
-          player_id,
-          kind,
-          qty
-        )
-        VALUES(?,?,?)
-        ON CONFLICT(player_id,kind)
-        DO UPDATE SET
-          qty=qty+excluded.qty
-      `).bind(
-        p.id,
-        key,
-        quantity
-      ),
-
-      env.DB.prepare(`
-        INSERT INTO s8_transactions(
-          tx_code,
-          player_id,
-          user_code,
-          type,
-          description,
-          amount,
-          quantity,
-          item_key
-        )
-        VALUES(?,?,?,?,?,?,?,?)
-      `).bind(
-        id,
-        p.id,
-        p.user_code,
-        'buy_ai',
-        meta.name,
-        cost,
-        quantity,
-        key
       )
+      .run();
 
-    ]);
+  if(
+    Number(debit.meta?.changes||0)!==1
+  )
+    return false;
 
-  }else{
+  try{
 
-    await env.DB.batch([
+    const id=txCode();
 
-      env.DB.prepare(`
+    if(meta.category==='income'){
+
+      await env.DB.batch([
+
+        env.DB.prepare(`
+          INSERT INTO s8_income_assets(
+            player_id,
+            kind,
+            qty
+          )
+          VALUES(?,?,?)
+          ON CONFLICT(player_id,kind)
+          DO UPDATE SET
+            qty=qty+excluded.qty
+        `).bind(
+          p.id,
+          key,
+          quantity
+        ),
+
+        env.DB.prepare(`
+          INSERT INTO s8_transactions(
+            tx_code,
+            player_id,
+            user_code,
+            type,
+            description,
+            amount,
+            quantity,
+            item_key
+          )
+          VALUES(?,?,?,?,?,?,?,?)
+        `).bind(
+          id,
+          p.id,
+          p.user_code,
+          'buy_ai',
+          meta.name,
+          cost,
+          quantity,
+          key
+        )
+
+      ]);
+
+    }else{
+
+      await env.DB.batch([
+
+        env.DB.prepare(`
+          UPDATE s8_assets
+          SET
+            ${key}=${key}+?
+          WHERE player_id=?
+        `).bind(
+          quantity,
+          p.id
+        ),
+
+        env.DB.prepare(`
+          INSERT INTO s8_transactions(
+            tx_code,
+            player_id,
+            user_code,
+            type,
+            description,
+            amount,
+            quantity,
+            item_key
+          )
+          VALUES(?,?,?,?,?,?,?,?)
+        `).bind(
+          id,
+          p.id,
+          p.user_code,
+          'buy_ai',
+          meta.name,
+          cost,
+          quantity,
+          key
+        )
+
+      ]);
+
+    }
+
+  }catch(err){
+
+    /*
+       اگر ثبت دارایی/تراکنش شکست خورد،
+       پول خرج‌شده برگردانده می‌شود.
+    */
+
+    await env.DB
+      .prepare(`
         UPDATE s8_players
         SET
-          dollars=dollars-?,
+          dollars=dollars+?,
           updated_at=CURRENT_TIMESTAMP
         WHERE id=?
-        AND dollars>=?
-      `).bind(
+      `)
+      .bind(
         cost,
-        p.id,
-        cost
-      ),
-
-      env.DB.prepare(`
-        UPDATE s8_assets
-        SET
-          ${key}=${key}+?
-        WHERE player_id=?
-      `).bind(
-        quantity,
         p.id
-      ),
-
-      env.DB.prepare(`
-        INSERT INTO s8_transactions(
-          tx_code,
-          player_id,
-          user_code,
-          type,
-          description,
-          amount,
-          quantity,
-          item_key
-        )
-        VALUES(?,?,?,?,?,?,?,?)
-      `).bind(
-        id,
-        p.id,
-        p.user_code,
-        'buy_ai',
-        meta.name,
-        cost,
-        quantity,
-        key
       )
+      .run();
 
-    ]);
+    return false;
 
   }
 
@@ -1295,11 +1183,6 @@ async function aiChoosePurchase(
     return null;
 
 
-  /*
-     درآمدزاها زمانی اهمیت بیشتری دارند
-     که AI پول کمی نسبت به تجهیزات داشته باشد.
-  */
-
   const incomeRows=
     INCOME.filter(
       x=>x[2]<=money
@@ -1328,11 +1211,6 @@ async function aiChoosePurchase(
       );
 
 
-  /*
-     اگر درآمد خیلی کم باشد،
-     احتمال خرید اقتصادی بیشتر می‌شود.
-  */
-
   const incomeDaily=
     await incomeTotal(
       env,
@@ -1351,11 +1229,6 @@ async function aiChoosePurchase(
     incomeRows.length &&
     chance(incomePressure)
   ){
-
-    /*
-       همیشه ارزان‌ترین را نمی‌خرد.
-       چند گزینه قابل خرید را بررسی می‌کند.
-    */
 
     const candidates=
       incomeRows
@@ -1380,11 +1253,6 @@ async function aiChoosePurchase(
 
   }
 
-
-  /*
-     وقتی دفاع ضعیف است،
-     گاهی سراغ پدافند می‌رود.
-  */
 
   if(
     defenseOwned<3 &&
@@ -1423,11 +1291,6 @@ async function aiChoosePurchase(
   }
 
 
-  /*
-     اگر نیروی نظامی کم است،
-     از چند سطح مختلف انتخاب می‌کند.
-  */
-
   if(
     militaryOwned<5 &&
     chance(0.70)
@@ -1447,7 +1310,7 @@ async function aiChoosePurchase(
             0,
             Math.min(
               affordable.length,
-              7
+              6
             )
           )
         );
@@ -1455,8 +1318,8 @@ async function aiChoosePurchase(
       return {
         key:chosen[1],
         quantity:
-          money>=chosen[2]*5
-            ?randomInt(1,5)
+          money>=chosen[2]*3
+            ?randomInt(1,3)
             :1
       };
 
@@ -1466,1418 +1329,43 @@ async function aiChoosePurchase(
 
 
   /*
-     خرید تهاجمی:
-     تجهیزات جنگی را بر اساس پول انتخاب می‌کند.
+     در صورت داشتن پول کافی،
+     AI از دسته‌های مختلف انتخاب می‌کند
+     تا رفتار کاملاً ثابت نباشد.
   */
 
-  const affordable=
-    warKeys
-      .map(k=>META[k])
+  const allAffordable=
+    Object.values(CATALOG)
+      .flat()
       .filter(
-        x=>x &&
-        x.price<=money
+        x=>x[2]<=money
       );
 
-  if(!affordable.length)
+  if(!allAffordable.length)
     return null;
 
-
-  /*
-     از کل لیست، تعدادی کاندید انتخاب می‌شود
-     تا تصمیم‌ها تکراری نباشند.
-  */
-
-  const candidates=[];
-
-  for(
-    let i=0;
-    i<Math.min(
-      affordable.length,
-      12
+  const sample=
+    allAffordable.slice(
+      0,
+      Math.min(
+        allAffordable.length,
+        15
+      )
     );
-    i++
-  ){
-
-    candidates.push(
-      affordable[
-        randomInt(
-          0,
-          affordable.length-1
-        )
-      ]
-    );
-
-  }
 
   const chosen=
-    pick(
-      candidates.length
-        ?candidates
-        :affordable
-    );
+    pick(sample);
 
   return {
-    key:chosen.key,
+    key:chosen[1],
     quantity:
-      money>=chosen.price*4
-        ?randomInt(1,4)
+      money>=chosen[2]*4
+        ?randomInt(1,3)
         :1
   };
 
-}
-
-
-/* ---------------------------------------------------------
-   AI هدف جنگ
---------------------------------------------------------- */
-
-async function aiChooseTarget(
-  env,
-  p
-){
-
-  const rows=
-    await env.DB
-      .prepare(`
-        SELECT *
-        FROM s8_players
-        WHERE active=1
-        AND id<>?
-        AND (
-          is_ai=0
-          OR is_ai IS NULL
-        )
-      `)
-      .bind(p.id)
-      .all();
-
-  const targets=
-    rows.results||[];
-
-  if(!targets.length){
-
-    const all=
-      await env.DB
-        .prepare(`
-          SELECT *
-          FROM s8_players
-          WHERE active=1
-          AND id<>?
-        `)
-        .bind(p.id)
-        .all();
-
-    if(
-      (all.results||[]).length
-    ){
-
-      return pick(
-        all.results
-      );
-
-    }
-
-    return null;
-
-  }
-
-
-  /*
-     قدرت اقتصادی حریف در انتخاب
-     اثر دارد، ولی انتخاب قطعی نیست.
-  */
-
-  const scored=
-    targets.map(target=>{
-
-      const money=
-        Number(
-          target.dollars||0
-        );
-
-      const myMoney=
-        Number(
-          p.dollars||0
-        );
-
-      let score=
-        randomFloat(
-          0.7,
-          1.3
-        );
-
-      if(
-        money<myMoney
-      )
-        score*=1.25;
-
-      if(
-        money>myMoney*3
-      )
-        score*=0.75;
-
-      return {
-        target,
-        score
-      };
-
-    });
-
-  scored.sort(
-    (a,b)=>b.score-a.score
-  );
-
-  const top=
-    scored.slice(
-      0,
-      Math.min(
-        4,
-        scored.length
-      )
-    );
-
-  return pick(
-    top
-  ).target;
-
-}
-
-
-/* ---------------------------------------------------------
-   AI انتخاب تجهیزات جنگ
---------------------------------------------------------- */
-
-async function aiChooseBattleAssets(
-  env,
-  p,
-  mode
-){
-
-  const row=
-    await env.DB
-      .prepare(`
-        SELECT *
-        FROM s8_assets
-        WHERE player_id=?
-      `)
-      .bind(p.id)
-      .first();
-
-  if(!row)
-    return {};
-
-
-  const allowed=
-    mode==='defense'
-      ?defenseKeys
-      :warKeys;
-
-  const available=
-    allowed
-      .filter(
-        k=>
-          Number(row?.[k]||0)>0
-      );
-
-  if(!available.length)
-    return {};
-
-
-  /*
-     AI الزاماً همه تجهیزاتش را
-     وارد جنگ نمی‌کند.
-  */
-
-  const shuffled=
-    [...available]
-      .sort(
-        ()=>Math.random()-0.5
-      );
-
-  const selected={};
-
-  const count=
-    randomInt(
-      1,
-      Math.min(
-        5,
-        shuffled.length
-      )
-    );
-
-  for(
-    let i=0;
-    i<count;
-    i++
-  ){
-
-    const key=
-      shuffled[i];
-
-    const owned=
-      Number(row[key]||0);
-
-    const ratio=
-      randomFloat(
-        0.25,
-        0.85
-      );
-
-    let q=
-      Math.max(
-        1,
-        Math.floor(
-          owned*ratio
-        )
-      );
-
-    q=
-      Math.min(
-        q,
-        owned
-      );
-
-    selected[key]=q;
-
-  }
-
-  return selected;
-
-}
-        if(q>0)
-      selected[key]=q;
-
-  }
-
-  return selected;
-
-}
-
-
-/* ---------------------------------------------------------
-   AI ایجاد جنگ
---------------------------------------------------------- */
-
-async function aiBattle(
-  env,
-  p,
-  memory
-){
-
-  const warEnabled=
-    await setting(
-      env,
-      'war_enabled',
-      '1'
-    );
-
-  if(warEnabled!=='1')
-    return false;
-
-  const target=
-    await aiChooseTarget(
-      env,
-      p
-    );
-
-  if(!target)
-    return false;
-
-  const attackChance=
-    Number(p.dollars||0)>=100000000
-      ?0.38
-      :Number(p.dollars||0)>=10000000
-        ?0.25
-        :0.12;
-
-  if(!chance(attackChance))
-    return false;
-
-  const mode=
-    chance(0.78)
-      ?'war'
-      :'defense';
-
-  if(mode==='defense')
-    return false;
-
-  const assets=
-    await aiChooseBattleAssets(
-      env,
-      p,
-      mode
-    );
-
-  if(!Object.keys(assets).length)
-    return false;
-
-  const code=
-    txCode();
-
-  const first=
-    await env.DB
-      .prepare(`
-        INSERT INTO s8_battles(
-          code,
-          attacker_player_id,
-          defender_player_id,
-          mode,
-          scenario
-        )
-        VALUES(?,?,?,?,?)
-        RETURNING id
-      `)
-      .bind(
-        code,
-        p.id,
-        target.id,
-        mode,
-        ''
-      )
-      .first();
-
-  if(!first)
-    return false;
-
-  const stm=[];
-
-  for(
-    const [key,q]
-    of Object.entries(assets)
-  ){
-
-    stm.push(
-      env.DB.prepare(`
-        UPDATE s8_assets
-        SET
-          ${key}=${key}-?
-        WHERE player_id=?
-        AND ${key}>=?
-      `).bind(
-        q,
-        p.id,
-        q
-      )
-    );
-
-    stm.push(
-      env.DB.prepare(`
-        INSERT INTO s8_battle_assets(
-          battle_id,
-          asset_key,
-          quantity
-        )
-        VALUES(?,?,?)
-      `).bind(
-        first.id,
-        key,
-        q
-      )
-    );
-
-  }
-
-  await env.DB.batch(stm);
-
-  memory.battles=
-    Number(memory.battles||0)+1;
-
-  memory.last_target=
-    target.id;
-
-  memory.last_action=
-    'battle';
-
-  await aiLog(
-    env,
-    p.id,
-    'battle',
-    {
-      battle_id:first.id,
-      code,
-      target_id:target.id,
-      target_country:target.country,
-      mode,
-      assets
-    }
-  );
-
-  return true;
-
-}
-
-
-/* ---------------------------------------------------------
-   AI یک تصمیم
---------------------------------------------------------- */
-
-async function aiAct(
-  env,
-  p
-){
-
-  const memory=
-    await getAIMemory(
-      env,
-      p
-    );
-
-  const assetsRow=
-    await env.DB
-      .prepare(`
-        SELECT *
-        FROM s8_assets
-        WHERE player_id=?
-      `)
-      .bind(p.id)
-      .first();
-
-  if(!assetsRow)
-    return;
-
-  const roll=
-    Math.random();
-
-  let action='idle';
-
-  if(
-    roll<0.58
-  ){
-
-    const purchase=
-      await aiChoosePurchase(
-        env,
-        p,
-        memory,
-        assetsRow
-      );
-
-    if(purchase){
-
-      const ok=
-        await aiBuy(
-          env,
-          p,
-          purchase.key,
-          purchase.quantity
-        );
-
-      if(ok){
-
-        memory.purchases=
-          Number(
-            memory.purchases||0
-          )+1;
-
-        memory.last_action=
-          'purchase';
-
-        memory.preferred_category=
-          META[
-            purchase.key
-          ]?.category||'unknown';
-
-        action='purchase';
-
-      }
-
-    }
-
-  }
-
-  else if(
-    roll<0.86
-  ){
-
-    const ok=
-      await aiBattle(
-        env,
-        p,
-        memory
-      );
-
-    if(ok)
-      action='battle';
-
-  }
-
-  else{
-
-    action='idle';
-
-  }
-
-  memory.last_roll=
-    roll;
-
-  memory.last_action=
-    action;
-
-  await saveAIMemory(
-    env,
-    p.id,
-    memory
-  );
-
-  await aiLog(
-    env,
-    p.id,
-    action,
-    {
-      dollars_before:
-        Number(p.dollars||0)
-    }
-  );
-
-  await aiSchedule(
-    env,
-    p.id,
-    action==='battle'
-      ?4
-      :3,
-    action==='battle'
-      ?18
-      :14
-  );
-
-}
-
-
-/* ---------------------------------------------------------
-   AI TICK
---------------------------------------------------------- */
-
-async function aiTick(env){
-
-  let players;
-
-  try{
-
-    const r=
-      await env.DB
-        .prepare(`
-          SELECT *
-          FROM s8_players
-          WHERE active=1
-          AND is_ai=1
-          AND ai_active=1
-        `)
-        .all();
-
-    players=
-      r.results||[];
-
-  }catch{
-
-    return;
-
-  }
-
-  for(
-    const p of players
-  ){
-
-    try{
-
-      if(!p.ai_next_action_at){
-
-        await aiSchedule(
-          env,
-          p.id,
-          randomInt(1,4),
-          randomInt(6,10)
-        );
-
-        continue;
-
-      }
-
-      const next=
-        Date.parse(
-          p.ai_next_action_at
-        );
-
-      if(
-        !Number.isFinite(next) ||
-        next>Date.now()
-      )
-        continue;
-
-      const fresh=
-        await env.DB
-          .prepare(`
-            SELECT *
-            FROM s8_players
-            WHERE id=?
-            AND active=1
-            AND is_ai=1
-            AND ai_active=1
-          `)
-          .bind(p.id)
-          .first();
-
-      if(!fresh)
-        continue;
-
-      await aiAct(
-        env,
-        fresh
-      );
-
-    }catch(e){
-
-      try{
-
-        await aiLog(
-          env,
-          p.id,
-          'error',
-          {
-            message:
-              String(
-                e?.message||e
-              )
-          }
-        );
-
-        await aiSchedule(
-          env,
-          p.id,
-          5,
-          15
-        );
-
-      }catch{}
-
-    }
-
-  }
-
-}
-
-
-/* =========================================================
-   WORKER
-========================================================= */
-
-export default {
-
-  async scheduled(
-    event,
-    env,
-    ctx
-  ){
-
-    ctx.waitUntil(
-      Promise.all([
-        addIncome(env),
-        aiTick(env)
-      ])
-    );
-
-  },
-
-
-  async fetch(req,env){
-
-    const u=
-      new URL(req.url);
-
-    const path=
-      u.pathname;
-
-    try{
-
-
-      /* ===================================================
-         ACCOUNT
-      =================================================== */
-
-      if(
-        path==='/api/account' &&
-        req.method==='GET'
-      ){
-
-        const code=
-          clean(
-            u.searchParams.get('code')
-          ).toUpperCase();
-
-        if(!/^POW\d+$/.test(code)){
-
-          return json(
-            {
-              message:
-                'کد کاربری نامعتبر است.'
-            },
-            400
-          );
-
         }
-
-        const a=
-          await account(
-            env,
-            code
-          );
-
-        if(!a){
-
-          return json(
-            {
-              message:
-                'این کد وجود ندارد'
-            },
-            404
-          );
-
-        }
-
-        if(a.blocked){
-
-          return json(
-            {
-              message:
-                'حساب کاربری شما مسدود است.'
-            },
-            403
-          );
-
-        }
-
-        return json(a);
-
-      }
-
-
-      /* ===================================================
-         CATALOG
-      =================================================== */
-
-      if(
-        path==='/api/catalog'
-      ){
-
-        return json({
-
-          equipment:
-            Object.fromEntries(
-              Object.entries(
-                CATALOG
-              ).map(
-                ([k,v])=>[
-                  k,
-                  v.map(
-                    x=>({
-                      name:x[0],
-                      key:x[1],
-                      price:x[2]
-                    })
-                  )
-                ]
-              )
-            ),
-
-          income:
-            INCOME.map(
-              x=>({
-                name:x[0],
-                key:x[1],
-                price:x[2],
-                daily:x[3]
-              })
-            )
-
-        });
-
-      }
-
-
-      /* ===================================================
-         SEASON SETTINGS
-      =================================================== */
-
-      if(
-        path==='/api/season/settings' &&
-        req.method==='GET'
-      ){
-
-        return json({
-
-          war_enabled:
-            (
-              await setting(
-                env,
-                'war_enabled',
-                '1'
-              )
-            )==='1',
-
-          bitcoin_price:
-            Number(
-              await setting(
-                env,
-                'bitcoin_price',
-                '120000'
-              )
-            ),
-
-          season:8,
-
-          name:
-            'جنگ جهانی سوم'
-
-        });
-
-      }
-
-
-      /* ===================================================
-         SEASON LOGIN
-      =================================================== */
-
-      if(
-        path==='/api/season/login' &&
-        req.method==='POST'
-      ){
-
-        const {code}=
-          await req.json();
-
-        const a=
-          await auth(
-            new Request(
-              req.url,
-              {
-                headers:{
-                  'x-user-code':
-                    clean(code)
-                }
-              }
-            ),
-            env
-          );
-
-        if(a.error)
-          return a.error;
-
-        return json({
-          ok:true,
-          code:a.user.code,
-          country:a.player.country
-        });
-
-      }
-
-
-      /* ===================================================
-         SEASON ME
-      =================================================== */
-
-      if(
-        path==='/api/season/me' &&
-        req.method==='GET'
-      ){
-
-        const a=
-          await auth(
-            req,
-            env
-          );
-
-        if(a.error)
-          return a.error;
-
-        return json(
-          await publicPlayer(
-            env,
-            a.player,
-            true
-          )
-        );
-
-      }
-
-
-      /* ===================================================
-         GOVERNMENTS
-      =================================================== */
-
-      if(
-        path==='/api/season/governments' &&
-        req.method==='GET'
-      ){
-
-        const rows=
-          await env.DB
-            .prepare(`
-              SELECT p.*
-              FROM s8_players p
-              WHERE active=1
-              ORDER BY dollars DESC
-            `)
-            .all();
-
-        const out=[];
-
-        for(
-          const p of rows.results||[]
-        ){
-
-          out.push(
-            await publicPlayer(
-              env,
-              p,
-              false
-            )
-          );
-
-        }
-
-        return json(out);
-
-      }
-
-
-      /* ===================================================
-         BUY
-      =================================================== */
-
-      if(
-        path==='/api/season/buy' &&
-        req.method==='POST'
-      ){
-
-        const a=
-          await auth(
-            req,
-            env
-          );
-
-        if(a.error)
-          return a.error;
-
-        const d=
-          await req.json();
-
-        const key=
-          clean(d.key);
-
-        const qty=
-          Math.floor(
-            Number(d.quantity)
-          );
-
-        if(
-          !META[key] ||
-          !Number.isSafeInteger(qty) ||
-          qty<1
-        ){
-
-          return json(
-            {
-              message:
-                'خرید نامعتبر است.'
-            },
-            400
-          );
-
-        }
-
-        const m=
-          META[key];
-
-        const total=
-          m.price*qty;
-
-        if(
-          !Number.isSafeInteger(total)
-        ){
-
-          return json(
-            {
-              message:
-                'مبلغ خرید نامعتبر است.'
-            },
-            400
-          );
-
-        }
-
-        const player=
-          await env.DB
-            .prepare(`
-              SELECT *
-              FROM s8_players
-              WHERE id=?
-              AND active=1
-            `)
-            .bind(a.player.id)
-            .first();
-
-        if(!player){
-
-          return json(
-            {
-              message:
-                'بازیکن پیدا نشد.'
-            },
-            404
-          );
-
-        }
-
-        if(
-          Number(player.dollars)<total
-        ){
-
-          return json(
-            {
-              message:
-                'موجودی کافی نیست.'
-            },
-            400
-          );
-
-        }
-
-        const tx=
-          txCode();
-
-        if(
-          m.category==='income'
-        ){
-
-          await env.DB.batch([
-
-            env.DB.prepare(`
-              UPDATE s8_players
-              SET
-                dollars=dollars-?,
-                updated_at=CURRENT_TIMESTAMP
-              WHERE id=?
-              AND dollars>=?
-            `).bind(
-              total,
-              player.id,
-              total
-            ),
-
-            env.DB.prepare(`
-              INSERT INTO s8_income_assets(
-                player_id,
-                kind,
-                qty
-              )
-              VALUES(?,?,?)
-              ON CONFLICT(player_id,kind)
-              DO UPDATE SET
-                qty=qty+excluded.qty
-            `).bind(
-              player.id,
-              key,
-              qty
-            ),
-
-            env.DB.prepare(`
-              INSERT INTO s8_transactions(
-                tx_code,
-                player_id,
-                user_code,
-                type,
-                description,
-                amount,
-                quantity,
-                item_key
-              )
-              VALUES(?,?,?,?,?,?,?,?)
-            `).bind(
-              tx,
-              player.id,
-              player.user_code,
-              'buy',
-              m.name,
-              total,
-              qty,
-              key
-            )
-
-          ]);
-
-        }else{
-
-          await env.DB.batch([
-
-            env.DB.prepare(`
-              UPDATE s8_players
-              SET
-                dollars=dollars-?,
-                updated_at=CURRENT_TIMESTAMP
-              WHERE id=?
-              AND dollars>=?
-            `).bind(
-              total,
-              player.id,
-              total
-            ),
-
-            env.DB.prepare(`
-              UPDATE s8_assets
-              SET
-                ${key}=${key}+?
-              WHERE player_id=?
-            `).bind(
-              qty,
-              player.id
-            ),
-
-            env.DB.prepare(`
-              INSERT INTO s8_transactions(
-                tx_code,
-                player_id,
-                user_code,
-                type,
-                description,
-                amount,
-                quantity,
-                item_key
-              )
-              VALUES(?,?,?,?,?,?,?,?)
-            `).bind(
-              tx,
-              player.id,
-              player.user_code,
-              'buy',
-              m.name,
-              total,
-              qty,
-              key
-            )
-
-          ]);
-
-        }
-
-        return json({
-          ok:true,
-          message:
-            'خرید با موفقیت انجام شد.'
-        });
-
-      }
-
-
-      /* ===================================================
-         BUY BATCH
-      =================================================== */
-
-      if(
-        path==='/api/season/buy-batch' &&
-        req.method==='POST'
-      ){
-
-        const a=
-          await auth(
-            req,
-            env
-          );
-
-        if(a.error)
-          return a.error;
-
-        const d=
-          await req.json();
-
-        const items=
-          Array.isArray(d.items)
-            ?d.items
-            :[];
-
-        if(!items.length){
-
-          return json(
-            {
-              message:
-                'سبد خرید خالی است.'
-            },
-            400
-          );
-
-        }
-
-        const normalized=[];
-
-        let total=0;
-
-        for(
-          const item of items
-        ){
-
-          const key=
-            clean(item.key);
-
-          const qty=
-            Math.floor(
-              Number(item.quantity)
             );
-
-          if(
-            !META[key] ||
-            !Number.isSafeInteger(qty) ||
-            qty<1
-          ){
-
-            return json(
-              {
-                message:
-                  'یکی از آیتم‌های خرید نامعتبر است.'
-              },
-              400
-            );
-
-          }
-
-          const price=
-            Number(
-              META[key].price
-            );
-
-          const cost=
-            price*qty;
-
-          if(
-            !Number.isSafeInteger(cost)
-          ){
-
-            return json(
-              {
-                message:
-                  'مبلغ خرید نامعتبر است.'
-              },
-              400
-            );
-
-          }
-
-          total+=cost;
-
-          normalized.push({
-            key,
-            qty,
-            cost,
-            meta:META[key]
-          });
-
-        }
-
-        if(
-          !Number.isSafeInteger(total)
-        ){
-
-          return json(
-            {
-              message:
-                'مبلغ نهایی نامعتبر است.'
-            },
-            400
-          );
-
-        }
-
-        const player=
-          await env.DB
-            .prepare(`
-              SELECT *
-              FROM s8_players
-              WHERE id=?
-              AND active=1
-            `)
-            .bind(a.player.id)
-            .first();
-
-        if(!player){
-
-          return json(
-            {
-              message:
-                'بازیکن پیدا نشد.'
-            },
-            404
-          );
-
-        }
-
-        if(
-          Number(player.dollars)<total
-        ){
-
-          return json(
-            {
-              message:
-                'موجودی کافی نیست.'
-            },
-            400
-          );
-
-        }
-
-        const stm=[];
-
-        stm.push(
-          env.DB.prepare(`
-            UPDATE s8_players
-            SET
-              dollars=dollars-?,
-              updated_at=CURRENT_TIMESTAMP
-            WHERE id=?
-            AND dollars>=?
-          `).bind(
-            total,
-            player.id,
-            total
-          )
-        );
-
-        for(
-          const item of normalized
-        ){
-
-          if(
-            item.meta.category==='income'
-          ){
-
-            stm.push(
-              env.DB.prepare(`
-                INSERT INTO s8_income_assets(
-                  player_id,
-                  kind,
-                  qty
-                )
-                VALUES(?,?,?)
-                ON CONFLICT(player_id,kind)
-                DO UPDATE SET
-                  qty=qty+excluded.qty
-              `).bind(
-                player.id,
-                item.key,
-                item.qty
-              )
-            );
-
-          }else{
-
-            stm.push(
-              env.DB.prepare(`
-                UPDATE s8_assets
-                SET
-                  ${item.key}=${item.key}+?
-                WHERE player_id=?
-              `).bind(
-                item.qty,
-                player.id
-              )
-            );
-
           }
 
           stm.push(
@@ -2907,1078 +1395,740 @@ export default {
 
         }
 
-        await env.DB.batch(stm);
-
-        return json({
-          ok:true,
-          message:
-            'خریدها با موفقیت انجام شدند.'
-        });
-
-      }
-
-
-      /* ===================================================
-         END BUY
-      =================================================== */
-    /* ===================================================
-   ادامه TRANSFER
-=================================================== */
-
-if(
-  key==='dollars' ||
-  key==='oil'
-){
-
-  if(
-    Number(a.player[key])<qty
-  ){
-
-    return json(
-      {
-        message:
-          'موجودی کافی نیست'
-      },
-      400
-    );
-
-  }
-
-
-  await env.DB.batch([
-
-    env.DB.prepare(`
-      UPDATE s8_players
-      SET
-        ${key}=${key}-?
-      WHERE id=?
-    `).bind(
-      qty,
-      a.player.id
-    ),
-
-    env.DB.prepare(`
-      UPDATE s8_players
-      SET
-        ${key}=${key}+?
-      WHERE id=?
-    `).bind(
-      qty,
-      b.id
-    )
-
-  ]);
-
-}else{
-
-  const senderAsset=
-    await env.DB
-      .prepare(`
-        SELECT ${key}
-        FROM s8_assets
-        WHERE player_id=?
-      `)
-      .bind(a.player.id)
-      .first();
-
-
-  if(
-    Number(
-      senderAsset?.[key]||0
-    )<qty
-  ){
-
-    return json(
-      {
-        message:
-          'موجودی کافی نیست'
-      },
-      400
-    );
-
-  }
-
-
-  await env.DB.batch([
-
-    env.DB.prepare(`
-      UPDATE s8_assets
-      SET
-        ${key}=${key}-?
-      WHERE player_id=?
-    `).bind(
-      qty,
-      a.player.id
-    ),
-
-    env.DB.prepare(`
-      UPDATE s8_assets
-      SET
-        ${key}=${key}+?
-      WHERE player_id=?
-    `).bind(
-      qty,
-      b.id
-    )
-
-  ]);
-
-}
-
-
-await env.DB.batch([
-
-  env.DB.prepare(`
-    INSERT INTO s8_transfers(
-      tx_code,
-      sender_player_id,
-      receiver_player_id,
-      kind,
-      asset_key,
-      quantity
-    )
-    VALUES(?,?,?,?,?,?)
-  `).bind(
-    transactionId,
-    a.player.id,
-    b.id,
-    key,
-    key,
-    qty
-  ),
-
-  env.DB.prepare(`
-    INSERT INTO s8_transactions(
-      tx_code,
-      player_id,
-      user_code,
-      type,
-      description,
-      amount,
-      quantity,
-      item_key
-    )
-    VALUES(?,?,?,?,?,?,?,?)
-  `).bind(
-    transactionId,
-    a.player.id,
-    a.user.code,
-    'transfer',
-    `انتقال ${key} به ${b.country}`,
-    0,
-    qty,
-    key
-  )
-
-]);
-
-
-return json({
-  message:
-    'انتقال با موفقیت انجام شد',
-  transaction_id:
-    transactionId
-});
-
-
-/* ===================================================
-   BATTLE
-=================================================== */
-
-if(
-  path==='/api/season/battle' &&
-  req.method==='POST'
-){
-
-  const a=
-    await auth(
-      req,
-      env
-    );
-
-  if(a.error)
-    return a.error;
-
-
-  if(
-    (
-      await setting(
-        env,
-        'war_enabled',
-        '1'
-      )
-    )!=='1'
-  ){
-
-    return json(
-      {
-        message:
-          'جنگ در حال حاضر غیرفعال است.'
-      },
-      403
-    );
-
-  }
-
-
-  const d=
-    await req.json();
-
-  const mode=
-    d.mode==='defense'
-      ?'defense'
-      :'war';
-
-  const toCountry=
-    clean(
-      d.to_country||
-      d.country
-    );
-
-  const oldToCode=
-    clean(
-      d.to_code
-    ).toUpperCase();
-
-
-  let target=null;
-
-  if(toCountry){
-
-    target=
-      await env.DB
-        .prepare(`
-          SELECT *
-          FROM s8_players
-          WHERE country=?
-          AND active=1
-        `)
-        .bind(toCountry)
-        .first();
-
-  }else if(oldToCode){
-
-    target=
-      await env.DB
-        .prepare(`
-          SELECT *
-          FROM s8_players
-          WHERE user_code=?
-          AND active=1
-        `)
-        .bind(oldToCode)
-        .first();
-
-  }
-
-
-  if(
-    !target ||
-    target.id===a.player.id
-  ){
-
-    return json(
-      {
-        message:
-          'هدف معتبر نیست.'
-      },
-      400
-    );
-
-  }
-
-
-  const scenario=
-    clean(
-      d.scenario
-    );
-
-
-  const assets=
-    d.assets &&
-    typeof d.assets==='object'
-      ?d.assets
-      :{};
-
-
-  const allowed=
-    mode==='defense'
-      ?defenseKeys
-      :warKeys;
-
-
-  const selected=[];
-
-
-  for(
-    const key of allowed
-  ){
-
-    if(
-      assets[key]===undefined
-    )
-      continue;
-
-    const qty=
-      Math.floor(
-        Number(
-          assets[key]
-        )
-      );
-
-    if(
-      !Number.isSafeInteger(qty) ||
-      qty<1
-    )
-      continue;
-
-    selected.push({
-      key,
-      qty
-    });
-
-  }
-
-
-  if(!selected.length){
-
-    return json(
-      {
-        message:
-          'هیچ تجهیزاتی برای جنگ انتخاب نشده است.'
-      },
-      400
-    );
-
-  }
-
-
-  const assetRow=
-    await env.DB
-      .prepare(`
-        SELECT *
-        FROM s8_assets
-        WHERE player_id=?
-      `)
-      .bind(a.player.id)
-      .first();
-
-
-  if(!assetRow){
-
-    return json(
-      {
-        message:
-          'دارایی‌های بازیکن پیدا نشد.'
-      },
-      500
-    );
-
-  }
-
-
-  for(
-    const item of selected
-  ){
-
-    if(
-      Number(
-        assetRow[item.key]||0
-      )<item.qty
-    ){
-
-      return json(
-        {
-          message:
-            `موجودی ${META[item.key]?.name||item.key} کافی نیست.`
-        },
-        400
-      );
-
-    }
-
-  }
-
-
-  const code=
-    txCode();
-
-
-  const battle=
-    await env.DB
-      .prepare(`
-        INSERT INTO s8_battles(
-          code,
-          attacker_player_id,
-          defender_player_id,
-          mode,
-          scenario
-        )
-        VALUES(?,?,?,?,?)
-        RETURNING id
-      `)
-      .bind(
-        code,
-        a.player.id,
-        target.id,
-        mode,
-        scenario
-      )
-      .first();
-
-
-  if(!battle){
-
-    return json(
-      {
-        message:
-          'ایجاد جنگ ناموفق بود.'
-      },
-      500
-    );
-
-  }
-
-
-  const statements=[];
-
-
-  for(
-    const item of selected
-  ){
-
-    statements.push(
-
-      env.DB.prepare(`
-        UPDATE s8_assets
-        SET
-          ${item.key}=
-          ${item.key}-?
-        WHERE player_id=?
-        AND ${item.key}>=?
-      `).bind(
-        item.qty,
-        a.player.id,
-        item.qty
-      )
-
-    );
-
-
-    statements.push(
-
-      env.DB.prepare(`
-        INSERT INTO s8_battle_assets(
-          battle_id,
-          asset_key,
-          quantity
-        )
-        VALUES(?,?,?)
-      `).bind(
-        battle.id,
-        item.key,
-        item.qty
-      )
-
-    );
-
-  }
-
-
-  await env.DB.batch(
-    statements
-  );
-
-
-  return json({
-
-    message:
-      'جنگ با موفقیت ثبت شد.',
-
-    battle_id:
-      battle.id,
-
-    code
-
-  });
-
-}
-
-
-/* ===================================================
-   BATTLES
-=================================================== */
-
-if(
-  path==='/api/season/battles' &&
-  req.method==='GET'
-){
-
-  const a=
-    await auth(
-      req,
-      env
-    );
-
-  if(a.error)
-    return a.error;
-
-
-  const rows=
-    await env.DB
-      .prepare(`
-        SELECT
-          b.*,
-          ap.country attacker_country,
-          dp.country defender_country
-        FROM s8_battles b
-
-        JOIN s8_players ap
-          ON ap.id=b.attacker_player_id
-
-        JOIN s8_players dp
-          ON dp.id=b.defender_player_id
-
-        WHERE
-          b.attacker_player_id=?
-          OR
-          b.defender_player_id=?
-
-        ORDER BY
-          b.id DESC
-      `)
-      .bind(
-        a.player.id,
-        a.player.id
-      )
-      .all();
-
-
-  return json(
-    rows.results||[]
-  );
-
-}
-
-
-/* ===================================================
-   BATTLE DETAIL
-=================================================== */
-
-if(
-  path.startsWith(
-    '/api/season/battle/'
-  ) &&
-  req.method==='GET'
-){
-
-  const a=
-    await auth(
-      req,
-      env
-    );
-
-  if(a.error)
-    return a.error;
-
-
-  const id=
-    Number(
-      path.split('/').pop()
-    );
-
-
-  if(
-    !Number.isSafeInteger(id) ||
-    id<1
-  ){
-
-    return json(
-      {
-        message:
-          'شناسه جنگ نامعتبر است.'
-      },
-      400
-    );
-
-  }
-
-
-  const battle=
-    await env.DB
-      .prepare(`
-        SELECT
-          b.*,
-          ap.country attacker_country,
-          dp.country defender_country
-        FROM s8_battles b
-
-        JOIN s8_players ap
-          ON ap.id=b.attacker_player_id
-
-        JOIN s8_players dp
-          ON dp.id=b.defender_player_id
-
-        WHERE b.id=?
-        AND (
-          b.attacker_player_id=?
-          OR
-          b.defender_player_id=?
-        )
-      `)
-      .bind(
-        id,
-        a.player.id,
-        a.player.id
-      )
-      .first();
-
-
-  if(!battle){
-
-    return json(
-      {
-        message:
-          'جنگ پیدا نشد.'
-      },
-      404
-    );
-
-  }
-
-
-  const assets=
-    await env.DB
-      .prepare(`
-        SELECT
-          asset_key,
-          quantity
-        FROM s8_battle_assets
-        WHERE battle_id=?
-      `)
-      .bind(id)
-      .all();
-
-
-  return json({
-    battle,
-    assets:
-      assets.results||[]
-  });
-
-}
-
-
-/* ===================================================
-   ADMIN AUTH
-=================================================== */
-
-if(
-  path==='/api/admin/login' &&
-  req.method==='POST'
-){
-
-  const d=
-    await req.json();
-
-  if(
-    !env.ADMIN_PASSWORD
-  ){
-
-    return json(
-      {
-        message:
-          'ADMIN_PASSWORD is missing'
-      },
-      500
-    );
-
-  }
-
-
-  if(
-    String(d.password||'')!==
-    String(env.ADMIN_PASSWORD)
-  ){
-
-    return json(
-      {
-        message:
-          'رمز عبور اشتباه است.'
-      },
-      401
-    );
-
-  }
-
-
-  return json({
-    ok:true,
-    token:
-      await makeToken(env)
-  });
-
-}
-
-
-/* ===================================================
-   ADMIN SETTINGS
-=================================================== */
-
-if(
-  path==='/api/admin/settings' &&
-  req.method==='GET'
-){
-
-  if(
-    !(await adminOK(req,env))
-  )
-    return json(
-      {
-        message:
-          'دسترسی غیرمجاز'
-      },
-      401
-    );
-
-
-  const r=
-    await env.DB
-      .prepare(`
-        SELECT key,value
-        FROM s8_settings
-        ORDER BY key
-      `)
-      .all();
-
-
-  return json(
-    r.results||[]
-  );
-
-}
-
-
-/* ===================================================
-   ADMIN SETTINGS UPDATE
-=================================================== */
-
-if(
-  path==='/api/admin/settings' &&
-  req.method==='PUT'
-){
-
-  if(
-    !(await adminOK(req,env))
-  )
-    return json(
-      {
-        message:
-          'دسترسی غیرمجاز'
-      },
-      401
-    );
-
-
-  const d=
-    await req.json();
-
-  const key=
-    clean(d.key);
-
-  const value=
-    String(
-      d.value??''
-    );
-
-
-  if(!key){
-
-    return json(
-      {
-        message:
-          'کلید تنظیمات نامعتبر است.'
-      },
-      400
-    );
-
-  }
-
-
-  await env.DB
-    .prepare(`
-      INSERT INTO s8_settings(
-        key,
-        value
-      )
-      VALUES(?,?)
-      ON CONFLICT(key)
-      DO UPDATE SET
-        value=excluded.value
-    `)
-    .bind(
-      key,
-      value
-    )
-    .run();
-
-
-  return json({
-    ok:true
-  });
-
-        }
-              const scenario=
-          clean(d.scenario);
-
-
-        if(!scenario){
-
-          return json(
-            {
-              message:
-                'سناریو را وارد کنید.'
-            },
-            400
-          );
-
-        }
-
-
-        let defender=null;
-
-
-        if(toCountry){
-
-          defender=
-            await env.DB
-              .prepare(`
-                SELECT *
-                FROM s8_players
-                WHERE country=?
-                AND active=1
-              `)
-              .bind(toCountry)
-              .first();
-
-        }else if(oldToCode){
-
-          defender=
-            await env.DB
-              .prepare(`
-                SELECT *
-                FROM s8_players
-                WHERE user_code=?
-                AND active=1
-              `)
-              .bind(oldToCode)
-              .first();
-
-        }
-
-
-        if(
-          !defender ||
-          defender.id===a.player.id
-        ){
-
-          return json(
-            {
-              message:
-                'کشور حریف معتبر نیست.'
-            },
-            400
-          );
-
-        }
-
-
-        const allowed=
-          mode==='defense'
-            ?defenseKeys
-            :warKeys;
-
-        const selected=
-          d.assets||{};
-
-        const cleaned=[];
-
-
-        const currentAssets=
-          await env.DB
-            .prepare(`
-              SELECT *
-              FROM s8_assets
-              WHERE player_id=?
-            `)
-            .bind(a.player.id)
-            .first();
-
-
-        for(
-          const [k,v]
-          of Object.entries(selected)
-        ){
-
-          const q=
-            Math.floor(
-              Number(v)
+        try{
+
+          const result=
+            await env.DB.batch(stm);
+
+          const debitResult=
+            result?.[0];
+
+          if(
+            Number(
+              debitResult?.meta?.changes||0
+            )!==1
+          ){
+
+            return json(
+              {
+                message:
+                  'موجودی کافی نیست یا خرید همزمان انجام شده است.'
+              },
+              409
             );
-
-          if(q>0){
-
-            if(
-              !allowed.includes(k)
-            ){
-
-              return json(
-                {
-                  message:
-                    'این تجهیز برای این نوع نبرد مجاز نیست.'
-                },
-                400
-              );
-
-            }
-
-
-            if(
-              Number(
-                currentAssets?.[k]||0
-              )<q
-            ){
-
-              return json(
-                {
-                  message:
-                    `تعداد ${META[k]?.name||k} کافی نیست.`
-                },
-                400
-              );
-
-            }
-
-
-            cleaned.push([
-              k,
-              q
-            ]);
 
           }
 
-        }
-
-
-        if(!cleaned.length){
+        }catch(e){
 
           return json(
             {
               message:
-                'حداقل یک تجهیز انتخاب کنید.'
-            },
-            400
-          );
-
-        }
-
-
-        const code=
-          txCode();
-
-
-        const first=
-          await env.DB
-            .prepare(`
-              INSERT INTO s8_battles(
-                code,
-                attacker_player_id,
-                defender_player_id,
-                mode,
-                scenario
-              )
-              VALUES(?,?,?,?,?)
-              RETURNING id
-            `)
-            .bind(
-              code,
-              a.player.id,
-              defender.id,
-              mode,
-              scenario
-            )
-            .first();
-
-
-        if(!first){
-
-          return json(
-            {
-              message:
-                'ثبت سناریو انجام نشد.'
+                'خرید انجام نشد.',
+              error:
+                String(
+                  e?.message||e
+                )
             },
             500
           );
 
         }
 
-
-        const stm=[];
-
-
-        for(
-          const [k,q]
-          of cleaned
-        ){
-
-          stm.push(
-            env.DB.prepare(`
-              UPDATE s8_assets
-              SET
-                ${k}=${k}-?
-              WHERE player_id=?
-            `).bind(
-              q,
-              a.player.id
-            )
-          );
-
-
-          stm.push(
-            env.DB.prepare(`
-              INSERT INTO s8_battle_assets(
-                battle_id,
-                asset_key,
-                quantity
-              )
-              VALUES(?,?,?)
-            `).bind(
-              first.id,
-              k,
-              q
-            )
-          );
-
-        }
-
-
-        await env.DB.batch(stm);
-
-
         return json({
+          ok:true,
           message:
-            'سناریو ارسال شد',
-          code
+            'خریدها با موفقیت انجام شد.'
         });
 
       }
 
 
       /* ===================================================
-         TRANSACTIONS
+         TRANSFER
       =================================================== */
 
       if(
-        path==='/api/season/transactions' &&
+        path==='/api/season/transfer' &&
+        req.method==='POST'
+      ){
+
+        const a=
+          await auth(
+            req,
+            env
+          );
+
+        if(a.error)
+          return a.error;
+
+        const d=
+          await req.json();
+
+        const targetCode=
+          clean(
+            d.target_code
+          ).toUpperCase();
+
+        const type=
+          clean(
+            d.type
+          ).toLowerCase();
+
+        const amount=
+          Math.floor(
+            Number(d.amount)
+          );
+
+        if(
+          !/^POW\d+$/.test(targetCode)
+        ){
+
+          return json(
+            {
+              message:
+                'کد مقصد نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        if(
+          targetCode===a.player.user_code
+        ){
+
+          return json(
+            {
+              message:
+                'انتقال به خودتان ممکن نیست.'
+            },
+            400
+          );
+
+        }
+
+        if(
+          !['dollars','oil'].includes(type)
+        ){
+
+          return json(
+            {
+              message:
+                'نوع انتقال نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        if(
+          !Number.isSafeInteger(amount) ||
+          amount<1
+        ){
+
+          return json(
+            {
+              message:
+                'مقدار انتقال نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const target=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE user_code=?
+              AND active=1
+            `)
+            .bind(targetCode)
+            .first();
+
+        if(!target){
+
+          return json(
+            {
+              message:
+                'کشور مقصد پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        const column=
+          type==='oil'
+            ?'oil'
+            :'dollars';
+
+        const sender=
+          await env.DB
+            .prepare(`
+              SELECT id,${column}
+              FROM s8_players
+              WHERE id=?
+              AND active=1
+            `)
+            .bind(a.player.id)
+            .first();
+
+        if(!sender){
+
+          return json(
+            {
+              message:
+                'کشور مبدا پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        if(
+          Number(sender[column]||0)<amount
+        ){
+
+          return json(
+            {
+              message:
+                'موجودی کافی نیست.'
+            },
+            400
+          );
+
+        }
+
+        /*
+           ابتدا موجودی فرستنده اتمیک کم می‌شود.
+           بنابراین چند درخواست همزمان نمی‌توانند
+           یک موجودی را دوباره خرج کنند.
+        */
+
+        const debit=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                ${column}=${column}-?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+              AND active=1
+              AND ${column}>=?
+            `)
+            .bind(
+              amount,
+              sender.id,
+              amount
+            )
+            .run();
+
+        if(
+          Number(
+            debit.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'موجودی کافی نیست یا انتقال همزمان انجام شده است.'
+            },
+            409
+          );
+
+        }
+
+        try{
+
+          const credit=
+            await env.DB
+              .prepare(`
+                UPDATE s8_players
+                SET
+                  ${column}=${column}+?,
+                  updated_at=CURRENT_TIMESTAMP
+                WHERE id=?
+                AND active=1
+              `)
+              .bind(
+                amount,
+                target.id
+              )
+              .run();
+
+          if(
+            Number(
+              credit.meta?.changes||0
+            )!==1
+          ){
+
+            throw new Error(
+              'کشور مقصد دیگر فعال نیست.'
+            );
+
+          }
+
+          await env.DB
+            .prepare(`
+              INSERT INTO s8_transactions(
+                tx_code,
+                player_id,
+                user_code,
+                type,
+                description,
+                amount
+              )
+              VALUES(?,?,?,?,?,?)
+            `)
+            .bind(
+              txCode(),
+              sender.id,
+              sender.id===a.player.id
+                ?a.player.user_code
+                :'',
+              'transfer_out',
+              `انتقال به ${target.country}`,
+              -amount
+            )
+            .run();
+
+          await env.DB
+            .prepare(`
+              INSERT INTO s8_transactions(
+                tx_code,
+                player_id,
+                user_code,
+                type,
+                description,
+                amount
+              )
+              VALUES(?,?,?,?,?,?)
+            `)
+            .bind(
+              txCode(),
+              target.id,
+              target.user_code,
+              'transfer_in',
+              `دریافت از ${a.player.country}`,
+              amount
+            )
+            .run();
+
+        }catch(e){
+
+          /*
+             اگر مقصد یا ثبت انتقال شکست خورد،
+             مبلغ به فرستنده برمی‌گردد.
+          */
+
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                ${column}=${column}+?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+            `)
+            .bind(
+              amount,
+              sender.id
+            )
+            .run();
+
+          return json(
+            {
+              message:
+                'انتقال انجام نشد.',
+              error:
+                String(
+                  e?.message||e
+                )
+            },
+            500
+          );
+
+        }
+
+        return json({
+          ok:true,
+          message:
+            'انتقال با موفقیت انجام شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         BATTLE CREATE
+      =================================================== */
+
+      if(
+        path==='/api/season/battle' &&
+        req.method==='POST'
+      ){
+
+        const a=
+          await auth(
+            req,
+            env
+          );
+
+        if(a.error)
+          return a.error;
+
+        const warEnabled=
+          await setting(
+            env,
+            'war_enabled',
+            '1'
+          );
+
+        if(
+          warEnabled!=='1'
+        ){
+
+          return json(
+            {
+              message:
+                'جنگ در حال حاضر غیرفعال است.'
+            },
+            403
+          );
+
+        }
+
+        const d=
+          await req.json();
+
+        const defenderCode=
+          clean(
+            d.defender_code
+          ).toUpperCase();
+
+        const mode=
+          clean(
+            d.mode
+          )||'war';
+
+        const scenario=
+          clean(
+            d.scenario
+          );
+
+        const assets=
+          d.assets &&
+          typeof d.assets==='object'
+            ?d.assets
+            :{};
+
+        if(
+          !/^POW\d+$/.test(
+            defenderCode
+          )
+        ){
+
+          return json(
+            {
+              message:
+                'کد مدافع نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        if(
+          defenderCode===a.player.user_code
+        ){
+
+          return json(
+            {
+              message:
+                'نمی‌توانید به کشور خودتان حمله کنید.'
+            },
+            400
+          );
+
+        }
+
+        const defender=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE user_code=?
+              AND active=1
+            `)
+            .bind(
+              defenderCode
+            )
+            .first();
+
+        if(!defender){
+
+          return json(
+            {
+              message:
+                'کشور مدافع پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        const selected=[];
+
+        for(
+          const [key,value]
+          of Object.entries(assets)
+        ){
+
+          if(
+            !META[key] ||
+            META[key].category==='income'
+          )
+            continue;
+
+          const q=
+            Math.floor(
+              Number(value)
+            );
+
+          if(
+            !Number.isSafeInteger(q) ||
+            q<1
+          )
+            continue;
+
+          if(
+            mode==='defense' &&
+            !defenseKeys.includes(key)
+          )
+            continue;
+
+          if(
+            mode!=='defense' &&
+            !warKeys.includes(key)
+          )
+            continue;
+
+          selected.push({
+            key,
+            quantity:q
+          });
+
+        }
+
+        if(!selected.length){
+
+          return json(
+            {
+              message:
+                'هیچ تجهیزاتی برای جنگ انتخاب نشده است.'
+            },
+            400
+          );
+
+        }
+
+        /*
+           ساخت شرط اتمیک برای کم‌کردن تمام تجهیزات.
+           اگر حتی یکی از موجودی‌ها کافی نباشد،
+           هیچ‌کدام کم نمی‌شوند.
+        */
+
+        const where=[];
+        const binds=[];
+
+        for(
+          const item of selected
+        ){
+
+          where.push(
+            `${item.key}>=?`
+          );
+
+          binds.push(
+            item.quantity
+          );
+
+        }
+
+        const setParts=[];
+
+        for(
+          const item of selected
+        ){
+
+          setParts.push(
+            `${item.key}=${item.key}-?`
+          );
+
+        }
+
+        const setBinds=
+          selected.map(
+            x=>x.quantity
+          );
+
+        const debit=
+          await env.DB
+            .prepare(`
+              UPDATE s8_assets
+              SET
+                ${setParts.join(',')},
+                updated_at=CURRENT_TIMESTAMP
+              WHERE player_id=?
+              AND ${where.join(' AND ')}
+            `)
+            .bind(
+              ...setBinds,
+              a.player.id,
+              ...binds
+            )
+            .run();
+
+        if(
+          Number(
+            debit.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'موجودی تجهیزات برای این جنگ کافی نیست.'
+            },
+            409
+          );
+
+        }
+
+        const code=
+          txCode();
+
+        let battleId=null;
+
+        try{
+
+          const battle=
+            await env.DB
+              .prepare(`
+                INSERT INTO s8_battles(
+                  code,
+                  attacker_player_id,
+                  defender_player_id,
+                  mode,
+                  scenario,
+                  status
+                )
+                VALUES(?,?,?,?,?,'pending')
+                RETURNING id
+              `)
+              .bind(
+                code,
+                a.player.id,
+                defender.id,
+                mode,
+                scenario
+              )
+              .first();
+
+          if(!battle)
+            throw new Error(
+              'ساخت جنگ ناموفق بود.'
+            );
+
+          battleId=
+            battle.id;
+
+          const stm=[];
+
+          for(
+            const item of selected
+          ){
+
+            stm.push(
+              env.DB.prepare(`
+                INSERT INTO s8_battle_assets(
+                  battle_id,
+                  asset_key,
+                  quantity
+                )
+                VALUES(?,?,?)
+              `).bind(
+                battleId,
+                item.key,
+                item.quantity
+              )
+            );
+
+          }
+
+          if(stm.length)
+            await env.DB.batch(stm);
+
+        }catch(e){
+
+          /*
+             جنگ ساخته نشد؛ تجهیزات کم‌شده
+             به کشور مهاجم برگردانده می‌شوند.
+          */
+
+          const refunds=
+            selected.map(
+              item=>
+                env.DB.prepare(`
+                  UPDATE s8_assets
+                  SET
+                    ${item.key}=${item.key}+?
+                  WHERE player_id=?
+                `).bind(
+                  item.quantity,
+                  a.player.id
+                )
+            );
+
+          if(refunds.length)
+            await env.DB.batch(
+              refunds
+            );
+
+          return json(
+            {
+              message:
+                'ساخت جنگ انجام نشد.',
+              error:
+                String(
+                  e?.message||e
+                )
+            },
+            500
+          );
+
+        }
+
+        return json({
+          ok:true,
+          battle_id:battleId,
+          code,
+          message:
+            'جنگ با موفقیت ثبت شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         BATTLES
+      =================================================== */
+
+      if(
+        path==='/api/season/battles' &&
         req.method==='GET'
       ){
 
@@ -3991,35 +2141,76 @@ if(
         if(a.error)
           return a.error;
 
-
-        const r=
+        const rows=
           await env.DB
             .prepare(`
               SELECT
-                tx_code,
-                type,
-                description,
-                amount,
-                quantity,
-                created_at
-              FROM s8_transactions
-              WHERE player_id=?
-              ORDER BY id DESC
-              LIMIT 100
+                b.*,
+                ap.country AS attacker_country,
+                dp.country AS defender_country
+              FROM s8_battles b
+              JOIN s8_players ap
+                ON ap.id=b.attacker_player_id
+              JOIN s8_players dp
+                ON dp.id=b.defender_player_id
+              WHERE
+                b.attacker_player_id=?
+                OR
+                b.defender_player_id=?
+              ORDER BY b.id DESC
             `)
-            .bind(a.player.id)
+            .bind(
+              a.player.id,
+              a.player.id
+            )
             .all();
 
+        const out=[];
 
-        return json(
-          r.results||[]
-        );
+        for(
+          const battle
+          of rows.results||[]
+        ){
+
+          const assets=
+            await env.DB
+              .prepare(`
+                SELECT
+                  asset_key,
+                  quantity
+                FROM s8_battle_assets
+                WHERE battle_id=?
+              `)
+              .bind(
+                battle.id
+              )
+              .all();
+
+          out.push({
+            id:battle.id,
+            code:battle.code,
+            attacker_country:
+              battle.attacker_country,
+            defender_country:
+              battle.defender_country,
+            mode:battle.mode,
+            scenario:battle.scenario,
+            status:battle.status,
+            created_at:battle.created_at,
+            reviewed_at:battle.reviewed_at,
+            assets:
+              assets.results||[]
+          });
+
+        }
+
+        return json(out);
 
       }
 
 
       /* ===================================================
-         ADMIN LOGIN
+         ADMIN AUTH
       =================================================== */
 
       if(
@@ -4027,26 +2218,17 @@ if(
         req.method==='POST'
       ){
 
-        if(!env.ADMIN_PASSWORD){
-
-          return json(
-            {
-              message:
-                'ADMIN_PASSWORD تنظیم نشده است.'
-            },
-            500
-          );
-
-        }
-
-
         const d=
           await req.json();
 
+        const password=
+          String(
+            d.password??''
+          );
 
         if(
-          d.password!==
-          env.ADMIN_PASSWORD
+          !env.ADMIN_PASSWORD ||
+          password!==env.ADMIN_PASSWORD
         ){
 
           return json(
@@ -4059,8 +2241,8 @@ if(
 
         }
 
-
         return json({
+          ok:true,
           token:
             await makeToken(env)
         });
@@ -4069,7 +2251,7 @@ if(
 
 
       /* ===================================================
-         ADMIN AUTH
+         ADMIN MIDDLEWARE
       =================================================== */
 
       if(
@@ -4077,13 +2259,16 @@ if(
       ){
 
         if(
-          !(await adminOK(req,env))
+          !await adminOK(
+            req,
+            env
+          )
         ){
 
           return json(
             {
               message:
-                'دسترسی غیرمجاز'
+                'دسترسی غیرمجاز است.'
             },
             401
           );
@@ -4094,19 +2279,1528 @@ if(
 
 
       /* ===================================================
-         ADMIN USERS
+         ADMIN PLAYERS LIST
       =================================================== */
 
       if(
-        path==='/api/admin/users' &&
+        path==='/api/admin/players' &&
         req.method==='GET'
       ){
 
+        const rows=
+          await env.DB
+            .prepare(`
+              SELECT
+                p.*,
+                u.name,
+                u.total_games,
+                u.loyalty_date
+              FROM s8_players p
+              LEFT JOIN users u
+                ON u.code=p.user_code
+              ORDER BY p.id DESC
+            `)
+            .all();
+
+        return json(
+          rows.results||[]
+        );
+
+      }
+
+
+      /* ===================================================
+         ADMIN ADD PLAYER
+      =================================================== */
+
+      if(
+        path==='/api/admin/players' &&
+        req.method==='POST'
+      ){
+
+        const d=
+          await req.json();
+
+        const code=
+          clean(
+            d.code
+          ).toUpperCase();
+
+        const country=
+          clean(
+            d.country
+          );
+
+        const dollars=
+          Math.max(
+            0,
+            Math.floor(
+              Number(
+                d.dollars??10000
+              )
+            )
+          );
+
+        const oil=
+          Math.max(
+            0,
+            Math.floor(
+              Number(
+                d.oil??0
+              )
+            )
+          );
+
+        const isAI=
+          Number(
+            d.is_ai??0
+          )===1
+            ?1
+            :0;
+
+        if(
+          !/^POW\d+$/.test(code)
+        ){
+
+          return json(
+            {
+              message:
+                'کد کاربری نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        if(!country){
+
+          return json(
+            {
+              message:
+                'نام کشور الزامی است.'
+            },
+            400
+          );
+
+        }
+
+        if(
+          !Number.isSafeInteger(
+            dollars
+          ) ||
+          !Number.isSafeInteger(
+            oil
+          )
+        ){
+
+          return json(
+            {
+              message:
+                'مقادیر مالی نامعتبر هستند.'
+            },
+            400
+          );
+
+        }
+
+        const user=
+          await getUser(
+            env,
+            code
+          );
+
+        if(!user){
+
+          return json(
+            {
+              message:
+                'این کد کاربری در جدول کاربران وجود ندارد.'
+            },
+            404
+          );
+
+        }
+
+        try{
+
+          await env.DB.batch([
+
+            env.DB.prepare(`
+              INSERT INTO s8_players(
+                user_code,
+                country,
+                dollars,
+                oil,
+                income_daily,
+                active,
+                is_ai,
+                ai_active,
+                ai_memory
+              )
+              VALUES(?,?,?,?,0,1,?,?,?)
+            `).bind(
+              code,
+              country,
+              dollars,
+              oil,
+              isAI,
+              isAI,
+              '{}'
+            ),
+
+            env.DB.prepare(`
+              INSERT INTO s8_assets(
+                player_id
+              )
+              SELECT id
+              FROM s8_players
+              WHERE user_code=?
+            `).bind(
+              code
+            )
+
+          ]);
+
+        }catch(e){
+
+          return json(
+            {
+              message:
+                'ثبت بازیکن انجام نشد.',
+              error:
+                String(
+                  e?.message||e
+                )
+            },
+            500
+          );
+
+        }
+
+        if(isAI){
+
+          await aiSchedule(
+            env,
+            (
+              await env.DB
+                .prepare(`
+                  SELECT id
+                  FROM s8_players
+                  WHERE user_code=?
+                `)
+                .bind(code)
+                .first()
+            ).id,
+            1,
+            5
+          );
+
+        }
+
+        return json({
+          ok:true,
+          message:
+            isAI
+              ?'کشور با موفقیت به هوش مصنوعی واگذار شد.'
+              :'کشور با موفقیت اضافه شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN TOGGLE AI
+      =================================================== */
+
+      if(
+        path.startsWith('/api/admin/players/') &&
+        req.method==='PUT'
+      ){
+
+        const id=
+          Number(
+            path.split('/').pop()
+          );
+
+        if(
+          !Number.isInteger(id) ||
+          id<1
+        ){
+
+          return json(
+            {
+              message:
+                'شناسه بازیکن نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const d=
+          await req.json();
+
+        if(
+          d.action==='ai'
+        ){
+
+          const enabled=
+            Number(
+              d.enabled
+            )===1
+              ?1
+              :0;
+
+          const result=
+            await env.DB
+              .prepare(`
+                UPDATE s8_players
+                SET
+                  is_ai=?,
+                  ai_active=?,
+                  ai_next_action_at=
+                    CASE
+                      WHEN ?=1
+                      THEN ?
+                      ELSE NULL
+                    END,
+                  updated_at=CURRENT_TIMESTAMP
+                WHERE id=?
+              `)
+              .bind(
+                enabled,
+                enabled,
+                enabled,
+                enabled
+                  ?new Date(
+                      Date.now()+
+                      randomInt(
+                        1,
+                        5
+                      )*60*1000
+                    ).toISOString()
+                  :null,
+                id
+              )
+              .run();
+
+          if(
+            Number(
+              result.meta?.changes||0
+            )!==1
+          ){
+
+            return json(
+              {
+                message:
+                  'بازیکن پیدا نشد.'
+              },
+              404
+            );
+
+          }
+
+          return json({
+            ok:true,
+            is_ai:enabled
+          });
+
+        }
+
+        return json(
+          {
+            message:
+              'عملیات نامعتبر است.'
+          },
+          400
+        );
+
+      }
+        await env.DB
+          .prepare(`
+            UPDATE users
+            SET
+              name=?,
+              total_games=?,
+              ${s.victories}=?
+            WHERE code=?
+          `)
+          .bind(
+            clean(d.name),
+            Math.max(
+              0,
+              Math.floor(
+                Number(
+                  d.total_games||0
+                )
+              )
+            ),
+            Math.max(
+              0,
+              Math.floor(
+                Number(
+                  d.victories??
+                  d.wins??
+                  0
+                )
+              )
+            ),
+            code
+          )
+          .run();
+
+
+        return json({
+          message:
+            'اطلاعات کاربر ویرایش شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN PLAYER DELETE
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/players/'
+        ) &&
+        req.method==='DELETE'
+      ){
+
+        const id=
+          Number(
+            path.split('/').pop()
+          );
+
+        if(
+          !Number.isSafeInteger(id) ||
+          id<1
+        ){
+
+          return json(
+            {
+              message:
+                'شناسه بازیکن نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const player=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE id=?
+            `)
+            .bind(id)
+            .first();
+
+        if(!player){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        try{
+
+          await env.DB
+            .prepare(`
+              DELETE FROM s8_players
+              WHERE id=?
+            `)
+            .bind(id)
+            .run();
+
+        }catch(e){
+
+          return json(
+            {
+              message:
+                'حذف بازیکن انجام نشد.',
+              error:
+                String(
+                  e?.message||e
+                )
+            },
+            500
+          );
+
+        }
+
+        return json({
+          ok:true,
+          message:
+            'بازیکن حذف شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN PLAYER ACTIVATE / DEACTIVATE
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        req.method==='PUT'
+      ){
+
+        const id=
+          Number(
+            path.split('/').pop()
+          );
+
+        if(
+          !Number.isSafeInteger(id) ||
+          id<1
+        ){
+
+          return json(
+            {
+              message:
+                'شناسه بازیکن نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const d=
+          await req.json();
+
+        const active=
+          Number(
+            d.active
+          )===1
+            ?1
+            :0;
+
+        const result=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                active=?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+            `)
+            .bind(
+              active,
+              id
+            )
+            .run();
+
+        if(
+          Number(
+            result.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        return json({
+          ok:true,
+          active
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN BATTLES
+      =================================================== */
+
+      if(
+        path==='/api/admin/battles' &&
+        req.method==='GET'
+      ){
+
+        const rows=
+          await env.DB
+            .prepare(`
+              SELECT
+                b.*,
+                ap.country AS attacker_country,
+                dp.country AS defender_country
+              FROM s8_battles b
+              JOIN s8_players ap
+                ON ap.id=b.attacker_player_id
+              JOIN s8_players dp
+                ON dp.id=b.defender_player_id
+              ORDER BY
+                b.id DESC
+              LIMIT 300
+            `)
+            .all();
+
+        const result=[];
+
+        for(
+          const battle
+          of rows.results||[]
+        ){
+
+          const assets=
+            await env.DB
+              .prepare(`
+                SELECT
+                  asset_key,
+                  quantity
+                FROM s8_battle_assets
+                WHERE battle_id=?
+              `)
+              .bind(
+                battle.id
+              )
+              .all();
+
+          result.push({
+            ...battle,
+            assets:
+              assets.results||[]
+          });
+
+        }
+
+        return json(result);
+
+      }
+
+
+      /* ===================================================
+         ADMIN REVIEW BATTLE
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/battles/'
+        ) &&
+        req.method==='PUT'
+      ){
+
+        const id=
+          Number(
+            path.split('/').pop()
+          );
+
+        if(
+          !Number.isSafeInteger(id) ||
+          id<1
+        ){
+
+          return json(
+            {
+              message:
+                'شناسه جنگ نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const d=
+          await req.json();
+
+        const action=
+          clean(
+            d.action
+          ).toLowerCase();
+
+        if(
+          !['approve','reject']
+            .includes(action)
+        ){
+
+          return json(
+            {
+              message:
+                'عملیات نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        /*
+           ابتدا جنگ pending را claim می‌کنیم.
+           این کار جلوی این را می‌گیرد که دو درخواست
+           همزمان یک جنگ را دوبار بررسی کنند.
+        */
+
+        const claim=
+          await env.DB
+            .prepare(`
+              UPDATE s8_battles
+              SET
+                status=?,
+                reviewed_at=CURRENT_TIMESTAMP
+              WHERE id=?
+              AND status='pending'
+            `)
+            .bind(
+              action==='approve'
+                ?'approved'
+                :'rejected',
+              id
+            )
+            .run();
+
+        if(
+          Number(
+            claim.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'این جنگ قبلاً بررسی شده یا وجود ندارد.'
+            },
+            409
+          );
+
+        }
+
+        if(
+          action==='reject'
+        ){
+
+          const battle=
+            await env.DB
+              .prepare(`
+                SELECT
+                  attacker_player_id
+                FROM s8_battles
+                WHERE id=?
+              `)
+              .bind(id)
+              .first();
+
+          if(!battle){
+
+            return json(
+              {
+                message:
+                  'جنگ پیدا نشد.'
+              },
+              404
+            );
+
+          }
+
+          const assets=
+            await env.DB
+              .prepare(`
+                SELECT
+                  asset_key,
+                  quantity
+                FROM s8_battle_assets
+                WHERE battle_id=?
+              `)
+              .bind(id)
+              .all();
+
+          const refunds=[];
+
+          for(
+            const item
+            of assets.results||[]
+          ){
+
+            if(
+              !META[item.asset_key]
+            )
+              continue;
+
+            refunds.push(
+              env.DB.prepare(`
+                UPDATE s8_assets
+                SET
+                  ${item.asset_key}=
+                  ${item.asset_key}+?
+                WHERE player_id=?
+              `).bind(
+                Number(item.quantity),
+                battle.attacker_player_id
+              )
+            );
+
+          }
+
+          if(refunds.length)
+            await env.DB.batch(
+              refunds
+            );
+
+        }
+
+        return json({
+          ok:true,
+          status:
+            action==='approve'
+              ?'approved'
+              :'rejected'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN AI TICK
+      =================================================== */
+
+      if(
+        path==='/api/admin/ai-tick' &&
+        req.method==='POST'
+      ){
+
+        await aiTick(env);
+
+        return json({
+          ok:true,
+          message:
+            'AI tick اجرا شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN AI LOGS
+      =================================================== */
+
+      if(
+        path==='/api/admin/ai-logs' &&
+        req.method==='GET'
+      ){
+
+        const limit=
+          Math.min(
+            500,
+            Math.max(
+              1,
+              Number(
+                u.searchParams.get(
+                  'limit'
+                )||100
+              )
+            )
+          );
+
+        const playerId=
+          Number(
+            u.searchParams.get(
+              'player_id'
+            )||0
+          );
+
+        let rows;
+
+        if(
+          Number.isSafeInteger(
+            playerId
+          ) &&
+          playerId>0
+        ){
+
+          rows=
+            await env.DB
+              .prepare(`
+                SELECT
+                  l.*,
+                  p.country
+                FROM s8_ai_logs l
+                JOIN s8_players p
+                  ON p.id=l.player_id
+                WHERE l.player_id=?
+                ORDER BY l.id DESC
+                LIMIT ?
+              `)
+              .bind(
+                playerId,
+                limit
+              )
+              .all();
+
+        }else{
+
+          rows=
+            await env.DB
+              .prepare(`
+                SELECT
+                  l.*,
+                  p.country
+                FROM s8_ai_logs l
+                JOIN s8_players p
+                  ON p.id=l.player_id
+                ORDER BY l.id DESC
+                LIMIT ?
+              `)
+              .bind(
+                limit
+              )
+              .all();
+
+        }
+
+        return json(
+          rows.results||[]
+        );
+
+      }
+
+
+      /* ===================================================
+         ADMIN DATABASE STATUS
+      =================================================== */
+
+      if(
+        path==='/api/admin/status' &&
+        req.method==='GET'
+      ){
+
+        const tables=[
+          'users',
+          's8_players',
+          's8_assets',
+          's8_income_assets',
+          's8_battles',
+          's8_battle_assets',
+          's8_transactions',
+          's8_transfers',
+          's8_settings',
+          's8_ai_logs'
+        ];
+
+        const status={};
+
+        for(
+          const table
+          of tables
+        ){
+
+          try{
+
+            const r=
+              await env.DB
+                .prepare(
+                  `SELECT COUNT(*) AS c FROM ${table}`
+                )
+                .first();
+
+            status[table]=
+              Number(
+                r?.c||0
+              );
+
+          }catch{
+
+            status[table]=null;
+
+          }
+
+        }
+
+        return json({
+          ok:true,
+          db:true,
+          tables:status
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN PLAYER DETAIL
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        req.method==='GET'
+      ){
+
+        const id=
+          Number(
+            path.split('/').pop()
+          );
+
+        if(
+          !Number.isSafeInteger(id) ||
+          id<1
+        ){
+
+          return json(
+            {
+              message:
+                'شناسه نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const player=
+          await env.DB
+            .prepare(`
+              SELECT
+                p.*,
+                u.name,
+                u.total_games,
+                u.loyalty_date
+              FROM s8_players p
+              LEFT JOIN users u
+                ON u.code=p.user_code
+              WHERE p.id=?
+            `)
+            .bind(id)
+            .first();
+
+        if(!player){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        const assets=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_assets
+              WHERE player_id=?
+            `)
+            .bind(id)
+            .first();
+
+        const incomeAssets=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_income_assets
+              WHERE player_id=?
+            `)
+            .bind(id)
+            .all();
+
+        return json({
+          player,
+          assets,
+          income_assets:
+            incomeAssets.results||[]
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN ADD MONEY
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        path.endsWith(
+          '/money'
+        ) &&
+        req.method==='POST'
+      ){
+
+        const parts=
+          path.split('/');
+
+        const id=
+          Number(
+            parts[
+              parts.length-2
+            ]
+          );
+
+        const d=
+          await req.json();
+
+        const amount=
+          Math.floor(
+            Number(
+              d.amount
+            )
+          );
+
+        if(
+          !Number.isSafeInteger(
+            amount
+          ) ||
+          amount===0
+        ){
+
+          return json(
+            {
+              message:
+                'مبلغ نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const result=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                dollars=dollars+?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+            `)
+            .bind(
+              amount,
+              id
+            )
+            .run();
+
+        if(
+          Number(
+            result.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        return json({
+          ok:true
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN ADD OIL
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        path.endsWith(
+          '/oil'
+        ) &&
+        req.method==='POST'
+      ){
+
+        const parts=
+          path.split('/');
+
+        const id=
+          Number(
+            parts[
+              parts.length-2
+            ]
+          );
+
+        const d=
+          await req.json();
+
+        const amount=
+          Math.floor(
+            Number(
+              d.amount
+            )
+          );
+
+        if(
+          !Number.isSafeInteger(
+            amount
+          ) ||
+          amount===0
+        ){
+
+          return json(
+            {
+              message:
+                'مقدار نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const result=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                oil=oil+?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+            `)
+            .bind(
+              amount,
+              id
+            )
+            .run();
+
+        if(
+          Number(
+            result.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        return json({
+          ok:true
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN ADD EQUIPMENT
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        path.endsWith(
+          '/equipment'
+        ) &&
+        req.method==='POST'
+      ){
+
+        const parts=
+          path.split('/');
+
+        const id=
+          Number(
+            parts[
+              parts.length-2
+            ]
+          );
+
+        const d=
+          await req.json();
+
+        const key=
+          clean(
+            d.key
+          );
+
+        const quantity=
+          Math.floor(
+            Number(
+              d.quantity
+            )
+          );
+
+        if(
+          !META[key] ||
+          META[key].category==='income' ||
+          !Number.isSafeInteger(
+            quantity
+          ) ||
+          quantity<1
+        ){
+
+          return json(
+            {
+              message:
+                'تجهیزات یا تعداد نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const result=
+          await env.DB
+            .prepare(`
+              UPDATE s8_assets
+              SET
+                ${key}=${key}+?
+              WHERE player_id=?
+            `)
+            .bind(
+              quantity,
+              id
+            )
+            .run();
+
+        if(
+          Number(
+            result.meta?.changes||0
+          )!==1
+        ){
+
+          return json(
+            {
+              message:
+                'دارایی بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        return json({
+          ok:true
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN ADD INCOME ASSET
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        path.endsWith(
+          '/income'
+        ) &&
+        req.method==='POST'
+      ){
+
+        const parts=
+          path.split('/');
+
+        const id=
+          Number(
+            parts[
+              parts.length-2
+            ]
+          );
+
+        const d=
+          await req.json();
+
+        const key=
+          clean(
+            d.key
+          );
+
+        const quantity=
+          Math.floor(
+            Number(
+              d.quantity
+            )
+          );
+
+        if(
+          !META[key] ||
+          META[key].category!=='income' ||
+          !Number.isSafeInteger(
+            quantity
+          ) ||
+          quantity<1
+        ){
+
+          return json(
+            {
+              message:
+                'دارایی درآمدزا یا تعداد نامعتبر است.'
+            },
+            400
+          );
+
+        }
+
+        const result=
+          await env.DB
+            .prepare(`
+              INSERT INTO s8_income_assets(
+                player_id,
+                kind,
+                qty
+              )
+              VALUES(?,?,?)
+              ON CONFLICT(player_id,kind)
+              DO UPDATE SET
+                qty=qty+excluded.qty
+            `)
+            .bind(
+              id,
+              key,
+              quantity
+            )
+            .run();
+
+        return json({
+          ok:true,
+          changes:
+            Number(
+              result.meta?.changes||0
+            )
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN RESET PLAYER
+      =================================================== */
+
+      if(
+        path.startsWith(
+          '/api/admin/player/'
+        ) &&
+        path.endsWith(
+          '/reset'
+        ) &&
+        req.method==='POST'
+      ){
+
+        const parts=
+          path.split('/');
+
+        const id=
+          Number(
+            parts[
+              parts.length-2
+            ]
+          );
+
+        const player=
+          await env.DB
+            .prepare(`
+              SELECT *
+              FROM s8_players
+              WHERE id=?
+            `)
+            .bind(id)
+            .first();
+
+        if(!player){
+
+          return json(
+            {
+              message:
+                'بازیکن پیدا نشد.'
+            },
+            404
+          );
+
+        }
+
+        await env.DB.batch([
+
+          env.DB.prepare(`
+            UPDATE s8_players
+            SET
+              dollars=10000,
+              oil=0,
+              income_daily=0,
+              updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+          `).bind(id),
+
+          env.DB.prepare(`
+            DELETE FROM s8_income_assets
+            WHERE player_id=?
+          `).bind(id),
+
+          env.DB.prepare(`
+            UPDATE s8_assets
+            SET
+              ${allAssetKeys
+                .map(
+                  k=>`${k}=0`
+                )
+                .join(',')}
+            WHERE player_id=?
+          `).bind(id)
+
+        ]);
+
+        return json({
+          ok:true,
+          message:
+            'اطلاعات بازیکن ریست شد.'
+        });
+
+      }
+
+
+      /* ===================================================
+         ADMIN TRANSACTIONS
+      =================================================== */
+
+      if(
+        path==='/api/admin/transactions' &&
+        req.method==='GET'
+      ){
+
+        const limit=
+          Math.min(
+            500,
+            Math.max(
+              1,
+              Number(
+                u.searchParams.get(
+                  'limit'
+                )||200
+              )
+            )
+          );
+
         const r=
           await env.DB
-            .prepare(
-              'SELECT * FROM users ORDER BY id DESC'
-            )
+            .prepare(`
+              SELECT
+                t.*,
+                p.country
+              FROM s8_transactions t
+              LEFT JOIN s8_players p
+                ON p.id=t.player_id
+              ORDER BY t.id DESC
+              LIMIT ?
+            `)
+            .bind(limit)
             .all();
 
         return json(
@@ -4116,208 +3810,128 @@ if(
       }
 
 
+      /* ===================================================
+         ADMIN TRANSFERS
+      =================================================== */
+
       if(
-        path==='/api/admin/users' &&
-        req.method==='POST'
+        path==='/api/admin/transfers' &&
+        req.method==='GET'
       ){
 
-        const d=
-          await req.json();
-
-        const code=
-          clean(d.code)
-            .toUpperCase();
-
-        const name=
-          clean(d.name);
-
-        const total=
-          Math.floor(
-            Number(
-              d.total_games||0
+        const limit=
+          Math.min(
+            500,
+            Math.max(
+              1,
+              Number(
+                u.searchParams.get(
+                  'limit'
+                )||200
+              )
             )
           );
 
-        const wins=
-          Math.floor(
-            Number(
-              d.wins??
-              d.victories??
-              0
-            )
-          );
-
-
-        if(
-          !/^POW\d+$/.test(code) ||
-          !name ||
-          total<0 ||
-          wins<0 ||
-          wins>total
-        ){
-
-          return json(
-            {
-              message:
-                'اطلاعات نامعتبر است.'
-            },
-            400
-          );
-
-        }
-
-
-        const s=
-          await userSchema(env);
-
-
-        try{
-
+        const r=
           await env.DB
             .prepare(`
-              INSERT INTO users(
-                code,
-                name,
-                total_games,
-                ${s.victories},
-                loyalty_date
-              )
-              VALUES(?,?,?,?,?)
+              SELECT
+                tr.*,
+                sp.country sender_country,
+                rp.country receiver_country
+              FROM s8_transfers tr
+              LEFT JOIN s8_players sp
+                ON sp.id=tr.sender_player_id
+              LEFT JOIN s8_players rp
+                ON rp.id=tr.receiver_player_id
+              ORDER BY tr.id DESC
+              LIMIT ?
             `)
-            .bind(
-              code,
-              name,
-              total,
-              wins,
-              d.loyalty_date||
-              new Date().toISOString()
-            )
-            .run();
+            .bind(limit)
+            .all();
 
-
-          return json({
-            message:
-              'کاربر اضافه شد'
-          });
-
-        }catch(e){
-
-          return json(
-            {
-              message:
-                String(e).includes(
-                  'UNIQUE'
-                )
-                  ?'این کد قبلاً ثبت شده است.'
-                  :'خطا در ثبت کاربر.'
-            },
-            409
-          );
-
-        }
+        return json(
+          r.results||[]
+        );
 
       }
 
 
       /* ===================================================
-         ADMIN USER EDIT / BLOCK
+         HEALTH
       =================================================== */
 
       if(
-        path.startsWith('/api/admin/users/') &&
-        req.method==='PUT'
+        path==='/api/health'
       ){
 
-        const code=
-          decodeURIComponent(
-            path.split('/').pop()
-          ).toUpperCase();
+        return json({
+          ok:true,
+          db:!!env.DB,
+          time:
+            new Date().toISOString()
+        });
 
-        const d=
-          await req.json();
-
-        const s=
-          await userSchema(env);
+      }
 
 
-        if(
-          d.action==='block'
-        ){
+      /* ===================================================
+         404
+      =================================================== */
 
-          let until=
-            'permanent';
+      if(
+        path.startsWith('/api/')
+      ){
 
+        return json(
+          {
+            message:
+              'مسیر API پیدا نشد.'
+          },
+          404
+        );
 
-          if(
-            d.type==='month'
-          ){
-
-            until=
-              new Date(
-                Date.now()+
-                30*86400000
-              ).toISOString();
-
-          }
-
-          else if(
-            d.type==='season'
-          ){
-
-            until='season';
-
-          }
+      }
 
 
-          await env.DB
-            .prepare(`
-              UPDATE users
-              SET
-                blocked_until=?,
-                ${s.blocked}=?
-              WHERE code=?
-            `)
-            .bind(
-              until,
-              d.type,
-              code
+      /* ===================================================
+         STATIC
+      =================================================== */
+
+      if(
+        env.ASSETS
+      ){
+
+        return env.ASSETS.fetch(
+          req
+        );
+
+      }
+
+
+      return text(
+        'Power of War'
+      );
+
+    }catch(e){
+
+      return json(
+        {
+          message:
+            'خطای داخلی سرور.',
+          error:
+            String(
+              e?.message||e
             )
-            .run();
+        },
+        500
+      );
 
+    }
 
-          return json({
-            message:
-              'کاربر مسدود شد'
-          });
+  }
 
-        }
-
-
-        if(
-          d.action==='unblock'
-        ){
-
-          await env.DB
-            .prepare(`
-              UPDATE users
-              SET
-                blocked_until=NULL,
-                ${s.blocked}=NULL
-              WHERE code=?
-            `)
-            .bind(code)
-            .run();
-
-
-          return json({
-            message:
-              'مسدودی برداشته شد'
-          });
-
-        }
-
-
-        await env.DB
+};
           .prepare(`
             UPDATE users
             SET
@@ -4338,10 +3952,8 @@ if(
           )
           .run();
 
-
         return json({
-          message:
-            'ویرایش شد'
+          message:'ویرایش شد'
         });
 
       }
@@ -4361,7 +3973,6 @@ if(
             path.split('/').pop()
           ).toUpperCase();
 
-
         await env.DB
           .prepare(
             'DELETE FROM users WHERE code=?'
@@ -4369,10 +3980,8 @@ if(
           .bind(code)
           .run();
 
-
         return json({
-          message:
-            'حذف شد'
+          message:'حذف شد'
         });
 
       }
@@ -4400,7 +4009,6 @@ if(
               ORDER BY p.dollars DESC
             `)
             .all();
-
 
         return json(
           r.results||[]
@@ -4435,32 +4043,27 @@ if(
             code
           );
 
-
         if(!u){
 
           return json(
             {
-              message:
-                'کاربر وجود ندارد'
+              message:'کاربر وجود ندارد'
             },
             404
           );
 
         }
 
-
         if(await isBlocked(u)){
 
           return json(
             {
-              message:
-                'کاربر مسدود است'
+              message:'کاربر مسدود است'
             },
             400
           );
 
         }
-
 
         if(
           await env.DB
@@ -4483,19 +4086,16 @@ if(
 
         }
 
-
         if(!country){
 
           return json(
             {
-              message:
-                'کشور را وارد کنید.'
+              message:'کشور را وارد کنید.'
             },
             400
           );
 
         }
-
 
         if(
           await env.DB
@@ -4519,7 +4119,6 @@ if(
 
         }
 
-
         const oil=
           Math.max(
             0,
@@ -4529,7 +4128,6 @@ if(
               )
             )
           );
-
 
         const dollars=
           Math.max(
@@ -4542,7 +4140,6 @@ if(
             )
           );
 
-
         const incomeDaily=
           Math.max(
             0,
@@ -4553,7 +4150,6 @@ if(
             )
           );
 
-
         const isAI=
           Number(
             d.is_ai||0
@@ -4561,12 +4157,10 @@ if(
             ?1
             :0;
 
-
         const aiActive=
           isAI
             ?1
             :0;
-
 
         const aiMemory=
           isAI
@@ -4583,7 +4177,6 @@ if(
                 )
               })
             :'{}';
-
 
         const player=
           await env.DB
@@ -4615,7 +4208,6 @@ if(
             )
             .first();
 
-
         if(!player){
 
           return json(
@@ -4627,7 +4219,6 @@ if(
           );
 
         }
-
 
         await env.DB
           .prepare(`
@@ -4641,7 +4232,6 @@ if(
           )
           .run();
 
-
         if(isAI){
 
           await aiSchedule(
@@ -4653,12 +4243,9 @@ if(
 
         }
 
-
         return json({
-          message:
-            'بازیکن اضافه شد',
-          id:
-            player.id
+          message:'بازیکن اضافه شد',
+          id:player.id
         });
 
       }
@@ -4680,7 +4267,6 @@ if(
             path.split('/').pop()
           );
 
-
         if(
           !Number.isSafeInteger(id) ||
           id<1
@@ -4688,18 +4274,15 @@ if(
 
           return json(
             {
-              message:
-                'شناسه نامعتبر است.'
+              message:'شناسه نامعتبر است.'
             },
             400
           );
 
         }
 
-
         const d=
           await req.json();
-
 
         if(
           d.action==='ai'
@@ -4715,25 +4298,21 @@ if(
               .bind(id)
               .first();
 
-
           if(!p){
 
             return json(
               {
-                message:
-                  'بازیکن پیدا نشد.'
+                message:'بازیکن پیدا نشد.'
               },
               404
             );
 
           }
 
-
           const enable=
             Boolean(
               d.enabled
             );
-
 
           await env.DB
             .prepare(`
@@ -4761,7 +4340,6 @@ if(
             )
             .run();
 
-
           await aiLog(
             env,
             id,
@@ -4771,13 +4349,11 @@ if(
             {}
           );
 
-
           return json({
             ok:true
           });
 
         }
-
 
         const country=
           clean(d.country);
@@ -4809,7 +4385,6 @@ if(
             ?0
             :1;
 
-
         await env.DB
           .prepare(`
             UPDATE s8_players
@@ -4829,7 +4404,6 @@ if(
             id
           )
           .run();
-
 
         return json({
           ok:true
@@ -4854,7 +4428,6 @@ if(
             path.split('/').pop()
           );
 
-
         if(
           !Number.isSafeInteger(id) ||
           id<1
@@ -4862,14 +4435,12 @@ if(
 
           return json(
             {
-              message:
-                'شناسه نامعتبر است.'
+              message:'شناسه نامعتبر است.'
             },
             400
           );
 
         }
-
 
         await env.DB
           .prepare(`
@@ -4878,7 +4449,6 @@ if(
           `)
           .bind(id)
           .run();
-
 
         return json({
           ok:true
@@ -4902,299 +4472,6 @@ if(
           ok:true
         });
 
-          }
-                );
-
-
-        /*
-           تیک AI از پنل:
-           is_ai=true
-        */
-
-        const isAI=
-          d.is_ai===true ||
-          d.is_ai===1 ||
-          d.is_ai==='1' ||
-          d.is_ai==='true';
-
-
-        const r=
-          await env.DB
-            .prepare(`
-              INSERT INTO s8_players(
-                user_code,
-                country,
-                dollars,
-                oil,
-                is_ai,
-                ai_active,
-                ai_memory
-              )
-              VALUES(
-                ?,?,
-                10000,
-                ?,
-                ?,
-                ?,
-                '{}'
-              )
-              RETURNING id
-            `)
-            .bind(
-              code,
-              country,
-              oil,
-              isAI?1:0,
-              isAI?1:0
-            )
-            .first();
-
-
-        await env.DB
-          .prepare(`
-            INSERT INTO s8_assets(
-              player_id
-            )
-            VALUES(?)
-          `)
-          .bind(r.id)
-          .run();
-
-
-        if(isAI){
-
-          await aiSchedule(
-            env,
-            r.id,
-            1,
-            4
-          );
-
-        }
-
-
-        return json({
-          message:
-            isAI
-              ?'بازیکن AI سیزن ۸ ثبت شد'
-              :'بازیکن سیزن ۸ ثبت شد',
-          is_ai:
-            isAI
-        });
-
-      }
-
-
-      /* ===================================================
-         ADMIN PLAYER EDIT
-      =================================================== */
-
-      if(
-        path.startsWith('/api/admin/players/') &&
-        req.method==='PUT'
-      ){
-
-        const id=
-          Number(
-            path.split('/').pop()
-          );
-
-        const d=
-          await req.json();
-
-        const p=
-          await env.DB
-            .prepare(`
-              SELECT *
-              FROM s8_players
-              WHERE id=?
-            `)
-            .bind(id)
-            .first();
-
-
-        if(!p){
-
-          return json(
-            {
-              message:
-                'بازیکن پیدا نشد'
-            },
-            404
-          );
-
-        }
-
-
-        /* -----------------------------------------------
-           روشن/خاموش کردن AI
-        ------------------------------------------------ */
-
-        if(
-          d.action==='ai'
-        ){
-
-          const enabled=
-            d.enabled===true ||
-            d.enabled===1 ||
-            d.enabled==='1' ||
-            d.enabled==='true';
-
-
-          await env.DB
-            .prepare(`
-              UPDATE s8_players
-              SET
-                is_ai=?,
-                ai_active=?,
-                ai_next_action_at=?,
-                updated_at=CURRENT_TIMESTAMP
-              WHERE id=?
-            `)
-            .bind(
-              enabled?1:0,
-              enabled?1:0,
-              enabled
-                ?new Date(
-                    Date.now()+
-                    randomInt(
-                      1,
-                      5
-                    )*60*1000
-                  ).toISOString()
-                :null,
-              id
-            )
-            .run();
-
-
-          await aiLog(
-            env,
-            id,
-            enabled
-              ?'enabled'
-              :'disabled',
-            {
-              by:'admin'
-            }
-          );
-
-
-          return json({
-            message:
-              enabled
-                ?'هوش مصنوعی فعال شد.'
-                :'هوش مصنوعی غیرفعال شد.',
-            is_ai:
-              enabled
-          });
-
-        }
-
-
-        /* -----------------------------------------------
-           تغییر کشور
-        ------------------------------------------------ */
-
-        if(
-          d.action==='country'
-        ){
-
-          const c=
-            clean(d.country);
-
-
-          if(!c){
-
-            return json(
-              {
-                message:
-                  'کشور را وارد کنید.'
-              },
-              400
-            );
-
-          }
-
-
-          if(
-            await env.DB
-              .prepare(`
-                SELECT id
-                FROM s8_players
-                WHERE country=?
-                AND id<>?
-                AND active=1
-              `)
-              .bind(c,id)
-              .first()
-          ){
-
-            return json(
-              {
-                message:
-                  'این کشور در اختیار بازیکن دیگری است.'
-              },
-              409
-            );
-
-          }
-
-
-          const zeros=
-            allAssetKeys
-              .map(
-                k=>`${k}=0`
-              )
-              .join(',');
-
-
-          await env.DB.batch([
-
-            env.DB.prepare(`
-              UPDATE s8_players
-              SET
-                country=?,
-                dollars=10000,
-                oil=0,
-                income_daily=0,
-                updated_at=CURRENT_TIMESTAMP
-              WHERE id=?
-            `).bind(
-              c,
-              id
-            ),
-
-            env.DB.prepare(`
-              UPDATE s8_assets
-              SET ${zeros}
-              WHERE player_id=?
-            `).bind(id),
-
-            env.DB.prepare(`
-              DELETE FROM s8_income_assets
-              WHERE player_id=?
-            `).bind(id)
-
-          ]);
-
-
-          return json({
-            message:
-              'کشور تغییر کرد و دارایی‌ها به ۱۰٬۰۰۰ دلار بازنشانی شدند.'
-          });
-
-        }
-
-
-        return json(
-          {
-            message:
-              'عملیات نامعتبر'
-          },
-          400
-        );
-
       }
 
 
@@ -5210,7 +4487,6 @@ if(
         const d=
           await req.json();
 
-
         const p=
           await env.DB
             .prepare(`
@@ -5225,7 +4501,6 @@ if(
             )
             .first();
 
-
         const kind=
           clean(d.kind);
 
@@ -5236,32 +4511,27 @@ if(
             )
           );
 
-
         if(!p){
 
           return json(
             {
-              message:
-                'بازیکن پیدا نشد'
+              message:'بازیکن پیدا نشد'
             },
             404
           );
 
         }
 
-
         if(q<1){
 
           return json(
             {
-              message:
-                'مقدار نامعتبر است.'
+              message:'مقدار نامعتبر است.'
             },
             400
           );
 
         }
-
 
         if(
           kind==='dollars' ||
@@ -5332,18 +4602,15 @@ if(
 
           return json(
             {
-              message:
-                'دارایی نامعتبر است.'
+              message:'دارایی نامعتبر است.'
             },
             400
           );
 
         }
 
-
         return json({
-          message:
-            'اعطا شد'
+          message:'اعطا شد'
         });
 
       }
@@ -5371,7 +4638,6 @@ if(
               LIMIT 500
             `)
             .all();
-
 
         return json(
           r.results||[]
@@ -5402,7 +4668,6 @@ if(
               LIMIT 500
             `)
             .all();
-
 
         return json(
           r.results||[]
@@ -5437,9 +4702,7 @@ if(
             `)
             .all();
 
-
         const out=[];
-
 
         for(
           const b of r.results||[]
@@ -5457,7 +4720,6 @@ if(
               .bind(b.id)
               .all();
 
-
           out.push({
             ...b,
             assets:
@@ -5465,7 +4727,6 @@ if(
           });
 
         }
-
 
         return json(out);
 
@@ -5489,7 +4750,6 @@ if(
         const d=
           await req.json();
 
-
         const b=
           await env.DB
             .prepare(`
@@ -5500,7 +4760,6 @@ if(
             `)
             .bind(id)
             .first();
-
 
         if(!b){
 
@@ -5514,7 +4773,6 @@ if(
 
         }
 
-
         const rows=
           await env.DB
             .prepare(`
@@ -5526,7 +4784,6 @@ if(
             `)
             .bind(id)
             .all();
-
 
         const stm=[
 
@@ -5544,7 +4801,6 @@ if(
           )
 
         ];
-
 
         if(!d.approved){
 
@@ -5569,9 +4825,7 @@ if(
 
         }
 
-
         await env.DB.batch(stm);
-
 
         return json({
           message:
@@ -5595,7 +4849,6 @@ if(
         const d=
           await req.json();
 
-
         await env.DB
           .prepare(`
             INSERT INTO s8_settings(
@@ -5613,10 +4866,8 @@ if(
           )
           .run();
 
-
         return json({
-          message:
-            'انجام شد'
+          message:'انجام شد'
         });
 
       }
@@ -5639,7 +4890,6 @@ if(
             )
           );
 
-
         if(
           !Number.isSafeInteger(price) ||
           price<0
@@ -5647,14 +4897,12 @@ if(
 
           return json(
             {
-              message:
-                'قیمت نامعتبر است.'
+              message:'قیمت نامعتبر است.'
             },
             400
           );
 
         }
-
 
         await env.DB
           .prepare(`
@@ -5673,7 +4921,6 @@ if(
           )
           .run();
 
-
         return json({
           message:
             'قیمت بیت‌کوین ثبت شد.'
@@ -5683,7 +4930,7 @@ if(
 
 
       /* ===================================================
-         ADMIN AI TEST / MANUAL TICK
+         ADMIN TEST / MANUAL AI TICK
       =================================================== */
 
       if(
@@ -5741,9 +4988,7 @@ if(
 
       return json(
         {
-          message:
-            'خطای سرور',
-
+          message:'خطای سرور',
           detail:
             String(
               e?.message||e
