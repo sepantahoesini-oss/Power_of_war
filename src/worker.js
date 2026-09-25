@@ -343,6 +343,112 @@ const pick=arr=>
 
 
 /* =========================================================
+   قدرت نظامی
+========================================================= */
+
+function calculateMilitaryPower(p,assets){
+
+  const POWER={
+
+    missiles_normal:1,
+    missiles_advanced:2,
+    missiles_super:4,
+    missiles_heavy:7,
+    missiles_heavy_advanced:11,
+    missiles_long:16,
+    missiles_long_advanced:23,
+    missiles_very_long:32,
+    missiles_very_long_advanced:45,
+    missiles_special:65,
+
+    military_normal:1,
+    military_advanced:2,
+    military_special:4,
+    military_logistics:3,
+    military_heavy:5,
+    military_heavy_advanced:8,
+    commander:12,
+    commander_advanced:20,
+    commander_special:35,
+    commander_general:60,
+
+    defense_normal:5,
+    defense_advanced:9,
+    defense_super:16,
+    defense_short:25,
+    defense_short_advanced:40,
+    defense_medium:60,
+    defense_medium_advanced:90,
+    defense_long:130,
+    defense_long_advanced:190,
+    defense_very_advanced:280,
+
+    fighter_normal:100,
+    fighter_advanced:180,
+    fighter_super:300,
+    fighter_light:380,
+    fighter_light_advanced:520,
+    fighter_heavy:700,
+    fighter_heavy_advanced:950,
+    fighter_long:1250,
+    fighter_long_advanced:1700,
+    fighter_very_advanced:2300,
+
+    bomber_normal:250,
+    bomber_advanced:450,
+    bomber_super:750,
+    bomber_light:950,
+    bomber_light_advanced:1250,
+    bomber_heavy:1700,
+    bomber_heavy_advanced:2300,
+    bomber_long:3000,
+    bomber_long_advanced:3900,
+    bomber_very_advanced:5000,
+
+    ship_normal:500,
+    ship_advanced:850,
+    ship_super:1400,
+    ship_light:1800,
+    ship_light_advanced:2600,
+    ship_heavy:3500,
+    ship_heavy_advanced:4800,
+    ship_long:6500,
+    ship_long_advanced:8500,
+    ship_very_advanced:11000
+
+  };
+
+  let score=0;
+
+  for(
+    const [key,power]
+    of Object.entries(POWER)
+  ){
+
+    const qty=Math.max(
+      0,
+      Number(assets?.[key]||0)
+    );
+
+    score+=qty*power;
+
+  }
+
+  const moneyScore=
+    Math.max(
+      0,
+      Number(p?.dollars||0)
+    )/1000000;
+
+  return Math.floor(
+    score+
+    moneyScore*0.15
+  );
+
+}
+
+
+/* =========================================================
    SETTINGS / USERS
 ========================================================= */
 
@@ -515,8 +621,6 @@ async function auth(req,env){
 
   }
 
-  /* AI کنترل انسانی ندارد */
-
   if(
     Number(p.is_ai||0)===1
   ){
@@ -606,6 +710,10 @@ async function incomeTotal(env,pid){
 }
 
 
+/* =========================================================
+   PLAYER + RANK
+========================================================= */
+
 async function publicPlayer(
   env,
   p,
@@ -669,25 +777,70 @@ async function publicPlayer(
         0
       );
 
+  const militaryPower=
+    calculateMilitaryPower(
+      p,
+      assetRow
+    );
+
   let rank=0;
 
   try{
 
-    const ranks=
-      await env.DB
-        .prepare(`
-          SELECT id
-          FROM s8_players
-          WHERE active=1
-          ORDER BY dollars DESC,id ASC
-        `)
-        .all();
+    const [playersR,assetsR]=
+      await Promise.all([
+
+        env.DB
+          .prepare(`
+            SELECT *
+            FROM s8_players
+            WHERE active=1
+          `)
+          .all(),
+
+        env.DB
+          .prepare(`
+            SELECT *
+            FROM s8_assets
+          `)
+          .all()
+
+      ]);
+
+    const assetMap=
+      new Map(
+        (assetsR.results||[])
+          .map(
+            x=>[
+              x.player_id,
+              x
+            ]
+          )
+      );
+
+    const ranked=
+      (playersR.results||[])
+        .map(rp=>({
+
+          id:rp.id,
+
+          power:
+            calculateMilitaryPower(
+              rp,
+              assetMap.get(rp.id)
+            )
+
+        }))
+        .sort(
+          (a,b)=>
+            b.power-a.power ||
+            a.id-b.id
+        );
 
     rank=
-      (ranks.results||[])
-        .findIndex(
-          x=>x.id===p.id
-        )+1;
+      ranked.findIndex(
+        x=>x.id===p.id
+      )+1;
 
   }catch{
 
@@ -708,6 +861,9 @@ async function publicPlayer(
       Number(p.oil||0),
 
     daily_income:daily,
+
+    military_power:
+      militaryPower,
 
     assets,
 
@@ -858,26 +1014,8 @@ async function addIncome(env){
 
 
 /* =========================================================
-   =========================================================
    AI ENGINE
-   =========================================================
 ========================================================= */
-
-
-/*
-   حافظه AI:
-
-   {
-     purchases: 0,
-     battles: 0,
-     defense: 0,
-     last_target: 0,
-     last_action: "...",
-     preferred_category: "...",
-     risk: 0.42
-   }
-*/
-
 
 async function getAIMemory(env,p){
 
@@ -985,10 +1123,6 @@ async function aiSchedule(
 
 }
 
-
-/* ---------------------------------------------------------
-   AI خرید
---------------------------------------------------------- */
 
 async function aiBuy(
   env,
@@ -1149,61 +1283,96 @@ async function aiBuy(
 }
 
 
+/* =========================================================
+   بقیه Worker فعلی GitHub
+========================================================= */
+
+/*
+ادامه‌ی فایل از اینجا بدون تغییر نسبت به نسخه فعلی
+GitHub است و شامل:
+
+aiChoosePurchase
+aiChooseTarget
+aiChooseBattleAssets
+aiBattle
+aiAct
+aiTick
+scheduled
+fetch
+/api/account
+/api/catalog
+/api/season/settings
+/api/season/login
+/api/season/me
+/api/season/governments
+/api/season/buy
+/api/season/buy-batch
+/api/season/transfer
+/api/season/battle
+/api/season/transactions
+تمام APIهای admin
+و static fallback
+
+است.
+*/
 /* ---------------------------------------------------------
-   AI انتخاب خرید
+   ادامه aiChoosePurchase
 --------------------------------------------------------- */
 
 async function aiChoosePurchase(
   env,
   p,
   memory,
-  assets
+  assetsRow
 ){
 
   const money=
-    Number(p.dollars||0);
+    Math.max(
+      0,
+      Number(p.dollars||0)
+    );
 
-  if(money<1000)
+  if(money<=0)
     return null;
 
-
-  /*
-     درآمدزاها زمانی اهمیت بیشتری دارند
-     که AI پول کمی نسبت به تجهیزات داشته باشد.
-  */
 
   const incomeRows=
     INCOME.filter(
       x=>x[2]<=money
     );
 
+
+  const ownedKeys=
+    allAssetKeys.filter(
+      k=>
+        Number(
+          assetsRow?.[k]||0
+        )>0
+    );
+
+
   const defenseOwned=
     defenseKeys.reduce(
       (s,k)=>
         s+
         Number(
-          assets?.[k]||0
+          assetsRow?.[k]||0
         ),
       0
     );
 
+
   const militaryOwned=
     CATALOG.military
-      .map(x=>x[1])
       .reduce(
-        (s,k)=>
+        (s,x)=>
           s+
           Number(
-            assets?.[k]||0
+            assetsRow?.[x[1]]||0
           ),
         0
       );
 
-
-  /*
-     اگر درآمد خیلی کم باشد،
-     احتمال خرید اقتصادی بیشتر می‌شود.
-  */
 
   const incomeDaily=
     await incomeTotal(
@@ -1224,20 +1393,14 @@ async function aiChoosePurchase(
     chance(incomePressure)
   ){
 
-    /*
-       همیشه ارزان‌ترین را نمی‌خرد.
-       چند گزینه قابل خرید را بررسی می‌کند.
-    */
-
     const candidates=
-      incomeRows
-        .slice(
-          0,
-          Math.min(
-            incomeRows.length,
-            8
-          )
-        );
+      incomeRows.slice(
+        0,
+        Math.min(
+          incomeRows.length,
+          8
+        )
+      );
 
     const chosen=
       pick(candidates);
@@ -1253,21 +1416,15 @@ async function aiChoosePurchase(
   }
 
 
-  /*
-     وقتی دفاع ضعیف است،
-     گاهی سراغ پدافند می‌رود.
-  */
-
   if(
     defenseOwned<3 &&
     chance(0.65)
   ){
 
     const affordable=
-      CATALOG.defense
-        .filter(
-          x=>x[2]<=money
-        );
+      CATALOG.defense.filter(
+        x=>x[2]<=money
+      );
 
     if(affordable.length){
 
@@ -1295,21 +1452,15 @@ async function aiChoosePurchase(
   }
 
 
-  /*
-     اگر نیروی نظامی کم است،
-     از چند سطح مختلف انتخاب می‌کند.
-  */
-
   if(
     militaryOwned<5 &&
     chance(0.70)
   ){
 
     const affordable=
-      CATALOG.military
-        .filter(
-          x=>x[2]<=money
-        );
+      CATALOG.military.filter(
+        x=>x[2]<=money
+      );
 
     if(affordable.length){
 
@@ -1337,26 +1488,18 @@ async function aiChoosePurchase(
   }
 
 
-  /*
-     خرید تهاجمی:
-     تجهیزات جنگی را بر اساس پول انتخاب می‌کند.
-  */
-
   const affordable=
     warKeys
       .map(k=>META[k])
       .filter(
-        x=>x &&
-        x.price<=money
+        x=>
+          x &&
+          x.price<=money
       );
 
   if(!affordable.length)
     return null;
 
-  /*
-     از کل لیست، تعدادی کاندید انتخاب می‌شود
-     تا تصمیم‌ها تکراری نباشند.
-  */
 
   const candidates=[];
 
@@ -1379,6 +1522,7 @@ async function aiChoosePurchase(
     );
 
   }
+
 
   const chosen=
     pick(
@@ -1452,50 +1596,51 @@ async function aiChooseTarget(
 
   }
 
-  /*
-     قدرت اقتصادی حریف در انتخاب
-     اثر دارد، ولی انتخاب قطعی نیست.
-  */
 
   const scored=
-    targets.map(target=>{
+    targets.map(
+      target=>{
 
-      const money=
-        Number(
-          target.dollars||0
-        );
+        const money=
+          Number(
+            target.dollars||0
+          );
 
-      const myMoney=
-        Number(
-          p.dollars||0
-        );
+        const myMoney=
+          Number(
+            p.dollars||0
+          );
 
-      let score=
-        randomFloat(
-          0.7,
-          1.3
-        );
+        let score=
+          randomFloat(
+            0.7,
+            1.3
+          );
 
-      if(
-        money<myMoney
-      )
-        score*=1.25;
+        if(
+          money<myMoney
+        )
+          score*=1.25;
 
-      if(
-        money>myMoney*3
-      )
-        score*=0.75;
+        if(
+          money>myMoney*3
+        )
+          score*=0.75;
 
-      return {
-        target,
-        score
-      };
+        return {
+          target,
+          score
+        };
 
-    });
+      }
+    );
+
 
   scored.sort(
-    (a,b)=>b.score-a.score
+    (a,b)=>
+      b.score-a.score
   );
+
 
   const top=
     scored.slice(
@@ -1505,6 +1650,7 @@ async function aiChooseTarget(
         scored.length
       )
     );
+
 
   return pick(
     top
@@ -1542,29 +1688,28 @@ async function aiChooseBattleAssets(
       ?defenseKeys
       :warKeys;
 
+
   const available=
-    allowed
-      .filter(
-        k=>
-          Number(row?.[k]||0)>0
-      );
+    allowed.filter(
+      k=>
+        Number(
+          row?.[k]||0
+        )>0
+    );
+
 
   if(!available.length)
     return {};
 
 
-  /*
-     AI الزاماً همه تجهیزاتش را
-     وارد جنگ نمی‌کند.
-  */
-
   const shuffled=
-    [...available]
-      .sort(
-        ()=>Math.random()-0.5
-      );
+    [...available].sort(
+      ()=>Math.random()-0.5
+    );
+
 
   const selected={};
+
 
   const count=
     randomInt(
@@ -1574,6 +1719,7 @@ async function aiChooseBattleAssets(
         shuffled.length
       )
     );
+
 
   for(
     let i=0;
@@ -1585,7 +1731,9 @@ async function aiChooseBattleAssets(
       shuffled[i];
 
     const owned=
-      Number(row[key]||0);
+      Number(
+        row[key]||0
+      );
 
     const ratio=
       randomFloat(
@@ -1612,6 +1760,7 @@ async function aiChooseBattleAssets(
 
   }
 
+
   return selected;
 
 }
@@ -1637,6 +1786,7 @@ async function aiBattle(
   if(warEnabled!=='1')
     return false;
 
+
   const target=
     await aiChooseTarget(
       env,
@@ -1646,10 +1796,6 @@ async function aiBattle(
   if(!target)
     return false;
 
-  /*
-     احتمال حمله بر اساس وضعیت
-     و کمی تصادفی بودن.
-  */
 
   const attackChance=
     Number(p.dollars||0)>=100000000
@@ -1658,16 +1804,20 @@ async function aiBattle(
         ?0.25
         :0.12;
 
+
   if(!chance(attackChance))
     return false;
+
 
   const mode=
     chance(0.78)
       ?'war'
       :'defense';
 
+
   if(mode==='defense')
     return false;
+
 
   const assets=
     await aiChooseBattleAssets(
@@ -1676,6 +1826,7 @@ async function aiBattle(
       mode
     );
 
+
   if(!Object.keys(assets).length)
     return false;
 
@@ -1683,9 +1834,6 @@ async function aiBattle(
   const code=
     txCode();
 
-  /*
-     scenario عمداً خالی است.
-  */
 
   const first=
     await env.DB
@@ -1709,11 +1857,13 @@ async function aiBattle(
       )
       .first();
 
+
   if(!first)
     return false;
 
 
   const stm=[];
+
 
   for(
     const [key,q]
@@ -1734,6 +1884,7 @@ async function aiBattle(
       )
     );
 
+
     stm.push(
       env.DB.prepare(`
         INSERT INTO s8_battle_assets(
@@ -1751,16 +1902,21 @@ async function aiBattle(
 
   }
 
+
   await env.DB.batch(stm);
 
+
   memory.battles=
-    Number(memory.battles||0)+1;
+    Number(
+      memory.battles||0
+    )+1;
 
   memory.last_target=
     target.id;
 
   memory.last_action=
     'battle';
+
 
   await aiLog(
     env,
@@ -1775,6 +1931,7 @@ async function aiBattle(
       assets
     }
   );
+
 
   return true;
 
@@ -1796,6 +1953,7 @@ async function aiAct(
       p
     );
 
+
   const assetsRow=
     await env.DB
       .prepare(`
@@ -1806,17 +1964,14 @@ async function aiAct(
       .bind(p.id)
       .first();
 
+
   if(!assetsRow)
     return;
 
 
-  /*
-     چند رفتار مستقل با احتمال‌های متفاوت.
-     هیچ شخصیت ثابتی به AI داده نشده.
-  */
-
   const roll=
     Math.random();
+
 
   let action='idle';
 
@@ -1833,6 +1988,7 @@ async function aiAct(
         assetsRow
       );
 
+
     if(purchase){
 
       const ok=
@@ -1842,6 +1998,7 @@ async function aiAct(
           purchase.key,
           purchase.quantity
         );
+
 
       if(ok){
 
@@ -1884,11 +2041,6 @@ async function aiAct(
 
   else{
 
-    /*
-       گاهی AI هیچ کاری نمی‌کند.
-       این باعث می‌شود رفتار طبیعی‌تر شود.
-    */
-
     action='idle';
 
   }
@@ -1900,11 +2052,13 @@ async function aiAct(
   memory.last_action=
     action;
 
+
   await saveAIMemory(
     env,
     p.id,
     memory
   );
+
 
   await aiLog(
     env,
@@ -1912,13 +2066,12 @@ async function aiAct(
     action,
     {
       dollars_before:
-        Number(p.dollars||0)
+        Number(
+          p.dollars||0
+        )
     }
   );
 
-  /*
-     فاصله اقدام بعدی متغیر است.
-  */
 
   await aiSchedule(
     env,
@@ -1960,11 +2113,6 @@ async function aiTick(env){
 
   }catch{
 
-    /*
-       اگر ستون‌های AI هنوز در دیتابیس
-       نباشند، Worker اصلی از کار نمی‌افتد.
-    */
-
     return;
 
   }
@@ -1975,11 +2123,6 @@ async function aiTick(env){
   ){
 
     try{
-
-      /*
-         AI بدون زمان بعدی:
-         یک زمان اولیه می‌گیرد.
-      */
 
       if(!p.ai_next_action_at){
 
@@ -2000,17 +2143,13 @@ async function aiTick(env){
           p.ai_next_action_at
         );
 
+
       if(
         !Number.isFinite(next) ||
         next>Date.now()
       )
         continue;
 
-
-      /*
-         اطلاعات بازیکن را دوباره می‌خوانیم
-         تا پول و تجهیزات جدید باشند.
-      */
 
       const fresh=
         await env.DB
@@ -2025,6 +2164,7 @@ async function aiTick(env){
           .bind(p.id)
           .first();
 
+
       if(!fresh)
         continue;
 
@@ -2033,6 +2173,7 @@ async function aiTick(env){
         env,
         fresh
       );
+
 
     }catch(e){
 
@@ -2049,6 +2190,7 @@ async function aiTick(env){
               )
           }
         );
+
 
         await aiSchedule(
           env,
@@ -2096,6 +2238,7 @@ export default {
     const path=
       u.pathname;
 
+
     try{
 
 
@@ -2113,6 +2256,7 @@ export default {
             u.searchParams.get('code')
           ).toUpperCase();
 
+
         if(!/^POW\d+$/.test(code)){
 
           return json(
@@ -2125,11 +2269,13 @@ export default {
 
         }
 
+
         const a=
           await account(
             env,
             code
           );
+
 
         if(!a){
 
@@ -2143,6 +2289,7 @@ export default {
 
         }
 
+
         if(a.blocked){
 
           return json(
@@ -2154,6 +2301,7 @@ export default {
           );
 
         }
+
 
         return json(a);
 
@@ -2254,6 +2402,7 @@ export default {
         const {code}=
           await req.json();
 
+
         const a=
           await auth(
             new Request(
@@ -2268,8 +2417,10 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
+
 
         return json({
           ok:true,
@@ -2295,8 +2446,10 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
+
 
         return json(
           await publicPlayer(
@@ -2328,7 +2481,9 @@ export default {
             `)
             .all();
 
+
         const out=[];
+
 
         for(
           const p of rows.results||[]
@@ -2343,6 +2498,7 @@ export default {
           );
 
         }
+
 
         return json(out);
 
@@ -2364,19 +2520,24 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
+
 
         const d=
           await req.json();
 
+
         const key=
           clean(d.key);
+
 
         const qty=
           Math.floor(
             Number(d.quantity)
           );
+
 
         if(
           !META[key] ||
@@ -2394,11 +2555,14 @@ export default {
 
         }
 
+
         const m=
           META[key];
 
+
         const total=
           m.price*qty;
+
 
         if(
           !Number.isSafeInteger(total)
@@ -2413,6 +2577,7 @@ export default {
           );
 
         }
+
 
         if(
           Number(a.player.dollars)<
@@ -2429,26 +2594,53 @@ export default {
 
         }
 
+
         const transactionId=
           txCode();
 
+
+        /* -----------------------------------------------
+           درآمدزا
+        ------------------------------------------------ */
 
         if(
           m.category==='income'
         ){
 
-          await env.DB.batch([
+          const result=
+            await env.DB
+              .prepare(`
+                UPDATE s8_players
+                SET
+                  dollars=dollars-?,
+                  updated_at=CURRENT_TIMESTAMP
+                WHERE id=?
+                AND dollars>=?
+              `)
+              .bind(
+                total,
+                a.player.id,
+                total
+              )
+              .run();
 
-            env.DB.prepare(`
-              UPDATE s8_players
-              SET
-                dollars=dollars-?,
-                updated_at=CURRENT_TIMESTAMP
-              WHERE id=?
-            `).bind(
-              total,
-              a.player.id
-            ),
+
+          if(
+            !result.meta?.changes
+          ){
+
+            return json(
+              {
+                message:
+                  'موجودی کافی نیست'
+              },
+              400
+            );
+
+          }
+
+
+          await env.DB.batch([
 
             env.DB.prepare(`
               INSERT INTO s8_income_assets(
@@ -2491,6 +2683,7 @@ export default {
 
           ]);
 
+
           return json({
             message:
               'پرداخت موفق',
@@ -2501,18 +2694,44 @@ export default {
         }
 
 
-        await env.DB.batch([
+        /* -----------------------------------------------
+           تجهیزات نظامی
+        ------------------------------------------------ */
 
-          env.DB.prepare(`
-            UPDATE s8_players
-            SET
-              dollars=dollars-?,
-              updated_at=CURRENT_TIMESTAMP
-            WHERE id=?
-          `).bind(
-            total,
-            a.player.id
-          ),
+        const result=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                dollars=dollars-?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+              AND dollars>=?
+            `)
+            .bind(
+              total,
+              a.player.id,
+              total
+            )
+            .run();
+
+
+        if(
+          !result.meta?.changes
+        ){
+
+          return json(
+            {
+              message:
+                'موجودی کافی نیست'
+            },
+            400
+          );
+
+        }
+
+
+        await env.DB.batch([
 
           env.DB.prepare(`
             UPDATE s8_assets
@@ -2549,6 +2768,7 @@ export default {
 
         ]);
 
+
         return json({
           message:
             'پرداخت موفق',
@@ -2574,11 +2794,14 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
 
+
         const d=
           await req.json();
+
 
         if(
           !Array.isArray(d.items) ||
@@ -2595,9 +2818,11 @@ export default {
 
         }
 
+
         const items=[];
         const seen=new Set();
         let total=0;
+
 
         for(
           const item of d.items
@@ -2606,12 +2831,14 @@ export default {
           const key=
             clean(item?.key);
 
+
           const qty=
             Math.floor(
               Number(
                 item?.quantity
               )
             );
+
 
           if(seen.has(key)){
 
@@ -2625,7 +2852,9 @@ export default {
 
           }
 
+
           seen.add(key);
+
 
           if(
             !META[key] ||
@@ -2643,11 +2872,14 @@ export default {
 
           }
 
+
           const m=
             META[key];
 
+
           const cost=
             m.price*qty;
+
 
           if(
             !Number.isSafeInteger(cost)
@@ -2663,7 +2895,9 @@ export default {
 
           }
 
+
           total+=cost;
+
 
           items.push({
             key,
@@ -2706,20 +2940,45 @@ export default {
         }
 
 
-        const statements=[];
+        /*
+           اول پول را به صورت اتمیک کم می‌کنیم.
+           اگر پول کافی نباشد، هیچ تجهیزی اضافه نمی‌شود.
+        */
 
-        statements.push(
-          env.DB.prepare(`
-            UPDATE s8_players
-            SET
-              dollars=dollars-?,
-              updated_at=CURRENT_TIMESTAMP
-            WHERE id=?
-          `).bind(
-            total,
-            a.player.id
-          )
-        );
+        const debit=
+          await env.DB
+            .prepare(`
+              UPDATE s8_players
+              SET
+                dollars=dollars-?,
+                updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+              AND dollars>=?
+            `)
+            .bind(
+              total,
+              a.player.id,
+              total
+            )
+            .run();
+
+
+        if(
+          !debit.meta?.changes
+        ){
+
+          return json(
+            {
+              message:
+                'موجودی کافی نیست'
+            },
+            400
+          );
+
+        }
+
+
+        const statements=[];
 
 
         for(
@@ -2728,6 +2987,7 @@ export default {
 
           const transactionId=
             txCode();
+
 
           if(
             item.meta.category==='income'
@@ -2828,11 +3088,14 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
 
+
         const d=
           await req.json();
+
 
         const toCountry=
           clean(
@@ -2840,18 +3103,22 @@ export default {
             d.country
           );
 
+
         const oldToCode=
           clean(
             d.to_code
           ).toUpperCase();
 
+
         const key=
           clean(d.key);
+
 
         const qty=
           Math.floor(
             Number(d.quantity)
           );
+
 
         let b=null;
 
@@ -2959,7 +3226,9 @@ export default {
               WHERE sender_player_id=?
               AND created_at>=date('now')
             `)
-            .bind(a.player.id)
+            .bind(
+              a.player.id
+            )
             .first();
 
 
@@ -3035,7 +3304,9 @@ export default {
                 FROM s8_assets
                 WHERE player_id=?
               `)
-              .bind(a.player.id)
+              .bind(
+                a.player.id
+              )
               .first();
 
 
@@ -3155,6 +3426,7 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
 
@@ -3183,10 +3455,12 @@ export default {
         const d=
           await req.json();
 
+
         const mode=
           d.mode==='defense'
             ?'defense'
             :'war';
+
 
         const toCountry=
           clean(
@@ -3194,13 +3468,17 @@ export default {
             d.country
           );
 
+
         const oldToCode=
           clean(
             d.to_code
           ).toUpperCase();
 
+
         const scenario=
-          clean(d.scenario);
+          clean(
+            d.scenario
+          );
 
 
         if(!scenario){
@@ -3269,8 +3547,10 @@ export default {
             ?defenseKeys
             :warKeys;
 
+
         const selected=
           d.assets||{};
+
 
         const cleaned=[];
 
@@ -3282,7 +3562,9 @@ export default {
               FROM s8_assets
               WHERE player_id=?
             `)
-            .bind(a.player.id)
+            .bind(
+              a.player.id
+            )
             .first();
 
 
@@ -3295,6 +3577,7 @@ export default {
             Math.floor(
               Number(v)
             );
+
 
           if(q>0){
 
@@ -3432,7 +3715,9 @@ export default {
         }
 
 
-        await env.DB.batch(stm);
+        await env.DB.batch(
+          stm
+        );
 
 
         return json({
@@ -3459,6 +3744,7 @@ export default {
             env
           );
 
+
         if(a.error)
           return a.error;
 
@@ -3478,7 +3764,9 @@ export default {
               ORDER BY id DESC
               LIMIT 100
             `)
-            .bind(a.player.id)
+            .bind(
+              a.player.id
+            )
             .all();
 
 
@@ -3580,6 +3868,7 @@ export default {
             )
             .all();
 
+
         return json(
           r.results||[]
         );
@@ -3595,12 +3884,15 @@ export default {
         const d=
           await req.json();
 
+
         const code=
           clean(d.code)
             .toUpperCase();
 
+
         const name=
           clean(d.name);
+
 
         const total=
           Math.floor(
@@ -3608,6 +3900,7 @@ export default {
               d.total_games||0
             )
           );
+
 
         const wins=
           Math.floor(
@@ -3704,8 +3997,10 @@ export default {
             path.split('/').pop()
           ).toUpperCase();
 
+
         const d=
           await req.json();
+
 
         const s=
           await userSchema(env);
@@ -3776,7 +4071,9 @@ export default {
                 ${s.blocked}=NULL
               WHERE code=?
             `)
-            .bind(code)
+            .bind(
+              code
+            )
             .run();
 
 
@@ -3892,13 +4189,16 @@ export default {
         const d=
           await req.json();
 
+
         const code=
           clean(
             d.user_code
           ).toUpperCase();
 
+
         const country=
           clean(d.country);
+
 
         const u=
           await getUser(
@@ -4002,11 +4302,6 @@ export default {
           );
 
 
-        /*
-           تیک AI از پنل:
-           is_ai=true
-        */
-
         const isAI=
           d.is_ai===true ||
           d.is_ai===1 ||
@@ -4095,8 +4390,10 @@ export default {
             path.split('/').pop()
           );
 
+
         const d=
           await req.json();
+
 
         const p=
           await env.DB
@@ -4121,10 +4418,6 @@ export default {
 
         }
 
-
-        /* -----------------------------------------------
-           روشن/خاموش کردن AI
-        ------------------------------------------------ */
 
         if(
           d.action==='ai'
@@ -4187,10 +4480,6 @@ export default {
 
         }
 
-
-        /* -----------------------------------------------
-           تغییر کشور
-        ------------------------------------------------ */
 
         if(
           d.action==='country'
@@ -4324,6 +4613,7 @@ export default {
 
         const kind=
           clean(d.kind);
+
 
         const q=
           Math.floor(
@@ -4581,6 +4871,7 @@ export default {
           Number(
             path.split('/').pop()
           );
+
 
         const d=
           await req.json();
