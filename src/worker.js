@@ -2471,32 +2471,36 @@ export default {
         req.method==='GET'
       ){
 
-        const rows=
-          await env.DB
-            .prepare(`
-              SELECT p.*
-              FROM s8_players p
-              WHERE active=1
-              ORDER BY dollars DESC
-            `)
-            .all();
+        const rows =
+  await env.DB
+    .prepare(`
+      SELECT p.*
+      FROM s8_players p
+      WHERE active=1
+    `)
+    .all();
 
+const out = [];
 
-        const out=[];
+for (const p of rows.results || []) {
 
+  out.push(
+    await publicPlayer(
+      env,
+      p,
+      false
+    )
+  );
 
-        for(
-          const p of rows.results||[]
-        ){
+}
 
-          out.push(
-            await publicPlayer(
-              env,
-              p,
-              false
-            )
-          );
-
+out.sort(
+  (a, b) =>
+    Number(b.military_power || 0) -
+    Number(a.military_power || 0) ||
+    Number(a.id || 0) -
+    Number(b.id || 0)
+);
         }
 
 
