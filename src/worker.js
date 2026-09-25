@@ -1,4 +1,4 @@
-const json=(d,s=200)=>new Response(
+7const json=(d,s=200)=>new Response(
   JSON.stringify(d),
   {
     status:s,
