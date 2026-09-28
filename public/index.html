@@ -1714,6 +1714,23 @@ async function transfer(){
 
 async function openBattle(){
 
+ function openSabotage(){
+  document.getElementById('seasonBody').innerHTML = `
+    <div class="card">
+      <h2>🕵️ مرکز خرابکاری</h2>
+      <p class="muted">
+        از این بخش می‌تونی عملیات خرابکاری انجام بدی
+        یا از کشورت در برابر خرابکاری محافظت کنی.
+      </p>
+
+      <div class="tile" onclick="loadSeason()">
+        <div class="ico">↩️</div>
+        <h3>بازگشت</h3>
+      </div>
+    </div>
+  `;
+ }
+ 
  try{
 
   await ensureCatalog();
