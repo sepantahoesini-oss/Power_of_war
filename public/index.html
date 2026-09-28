@@ -2303,6 +2303,87 @@ document.addEventListener("click",()=>{
  }
 },{once:true});
 </script>
+<script>
+function unlockDev(){
+ const password =
+  document.getElementById('devPassword').value;
 
+ if(password === 's1234ss3'){
+  document.getElementById('devLock').remove();
+  sessionStorage.setItem('dev_unlocked','1');
+ }else{
+  document.getElementById('devError').textContent =
+   'رمز اشتباه است.';
+ }
+}
+
+if(sessionStorage.getItem('dev_unlocked') === '1'){
+ const lock = document.getElementById('devLock');
+ if(lock) lock.remove();
+}
+</script>
 </body>
+ <div id="devLock" style="
+ position:fixed;
+ inset:0;
+ z-index:999999;
+ background:#06090b;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:20px;
+ direction:rtl;
+ font-family:Vazirmatn,Tahoma,sans-serif;
+">
+ <div style="
+  width:min(420px,100%);
+  padding:30px 22px;
+  background:#10171b;
+  border:1px solid #2a383f;
+  border-radius:20px;
+  text-align:center;
+  color:#f2f6f3;
+ ">
+  <div style="font-size:48px">🛠️</div>
+  <h2 style="color:#8dff9a">سایت در حال بروزرسانی است</h2>
+  <p style="color:#8e9b9f;line-height:2">
+   برای ورود، رمز توسعه‌دهنده را وارد کنید.
+  </p>
+
+  <input
+   id="devPassword"
+   type="password"
+   placeholder="رمز توسعه‌دهنده"
+   autocomplete="off"
+   style="
+    width:100%;
+    padding:14px;
+    border-radius:10px;
+    border:1px solid #39484f;
+    background:#080d0f;
+    color:white;
+    font:inherit;
+    text-align:center;
+   "
+  >
+
+  <button
+   type="button"
+   onclick="unlockDev()"
+   style="
+    width:100%;
+    margin-top:12px;
+    padding:13px;
+    border:0;
+    border-radius:10px;
+    background:#8dff9a;
+    color:#061009;
+    font:inherit;
+    font-weight:900;
+   "
+  >ورود به سایت</button>
+
+  <p id="devError" style="color:#ff5968;min-height:24px"></p>
+ </div>
+ </div>
   </html>
