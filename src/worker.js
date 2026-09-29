@@ -2540,6 +2540,188 @@ out.sort(
 
       }
 
+     /* ===================================================
+   SABOTAGE
+======================================================= */
+
+if(
+  path==='/api/season/sabotage' &&
+  req.method==='POST'
+){
+
+  const a=
+    await auth(
+      req,
+      env
+    );
+
+  if(a.error)
+    return a.error;
+
+  const d=
+    await req.json();
+
+  const targetId=
+    Number(d.target_player_id);
+
+  const type=
+    clean(d.sabotage_type);
+
+  const allowedTypes=[
+    'shop',
+    'counter',
+    'bomber'
+  ];
+
+  if(
+    !Number.isInteger(targetId) ||
+    targetId<1 ||
+    !allowedTypes.includes(type)
+  ){
+
+    return json(
+      {
+        message:
+          'اطلاعات عملیات نامعتبر است.'
+      },
+      400
+    );
+
+  }
+
+  if(
+    targetId===Number(a.player.id)
+  ){
+
+    return json(
+      {
+        message:
+          'نمی‌توانید خودتان را هدف قرار دهید.'
+      },
+      400
+    );
+
+  }
+
+  const assetMap={
+    shop:'sab_hacker_shop',
+    counter:'sab_hacker_counter',
+    bomber:'sab_bomber'
+  };
+
+  const assetKey=
+    assetMap[type];
+
+  const target=
+    await env.DB
+      .prepare(`
+        SELECT id
+        FROM s8_players
+        WHERE id=?
+        AND active=1
+      `)
+      .bind(targetId)
+      .first();
+
+  if(!target){
+
+    return json(
+      {
+        message:
+          'بازیکن هدف پیدا نشد.'
+      },
+      404
+    );
+
+  }
+
+  const asset=
+    await env.DB
+      .prepare(`
+        SELECT ${assetKey}
+        FROM s8_assets
+        WHERE player_id=?
+      `)
+      .bind(a.player.id)
+      .first();
+
+  if(
+    !asset ||
+    Number(asset[assetKey]||0)<1
+  ){
+
+    return json(
+      {
+        message:
+          'این نیروی خرابکاری را ندارید.'
+      },
+      400
+    );
+
+  }
+
+  const guard=
+    await env.DB
+      .prepare(`
+        SELECT sab_guard
+        FROM s8_assets
+        WHERE player_id=?
+      `)
+      .bind(targetId)
+      .first();
+
+  if(
+    Number(guard?.sab_guard||0)>0
+  ){
+
+    return json(
+      {
+        message:
+          'بازیکن هدف دارای محافظ ضدخرابکاری است.'
+      },
+      400
+    );
+
+  }
+
+  const result=
+    await env.DB.batch([
+
+      env.DB.prepare(`
+        UPDATE s8_assets
+        SET ${assetKey}=${assetKey}-1
+        WHERE player_id=?
+        AND ${assetKey}>0
+      `)
+      .bind(a.player.id),
+
+      env.DB.prepare(`
+        INSERT INTO s8_sabotage_operations(
+          attacker_player_id,
+          target_player_id,
+          sabotage_type,
+          status,
+          result_data
+        )
+        VALUES(?,?,?,'pending','{}')
+      `)
+      .bind(
+        a.player.id,
+        targetId,
+        type
+      )
+
+    ]);
+
+  return json({
+    ok:true,
+    message:
+      'عملیات خرابکاری ثبت شد.',
+    operation_id:
+      result[1]?.meta?.last_row_id || null
+  });
+
+   }
 
       /* ===================================================
          BUY
