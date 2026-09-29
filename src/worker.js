@@ -2269,14 +2269,15 @@ export default {
     env,
     ctx
   ){
-
+   
     ctx.waitUntil(
       Promise.all([
         addIncome(env),
         aiTick(env)
+       processSabotage(env)
       ])
     );
-
+   
   },
 
 
