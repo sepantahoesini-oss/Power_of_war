@@ -2703,7 +2703,7 @@ if(
           status,
           result_data
         )
-        VALUES(?,?,?,'pending','{}')
+        VALUES(?,?,?,'pending',datetime('now','+5 minutes'),'{}')
       `)
       .bind(
         a.player.id,
