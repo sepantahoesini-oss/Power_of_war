@@ -5242,6 +5242,40 @@ if(sabotageEnabled !== '1'){
 
       }
 
+     if(
+  path==='/api/admin/sabotage' &&
+  req.method==='POST'
+){
+  if(!(await adminOK(req,env))){
+    return json(
+      {message:'دسترسی غیرمجاز'},
+      401
+    );
+  }
+
+  const d=await req.json();
+
+  const enabled=
+    d.enabled===true ? '1' : '0';
+
+  await env.DB
+    .prepare(`
+      INSERT INTO s8_settings(key,value)
+      VALUES(?,?)
+      ON CONFLICT(key)
+      DO UPDATE SET value=excluded.value
+    `)
+    .bind(
+      'sabotage_enabled',
+      enabled
+    )
+    .run();
+
+  return json({
+    ok:true,
+    enabled:enabled==='1'
+  });
+    }
 
       /* ===================================================
          ADMIN WAR
