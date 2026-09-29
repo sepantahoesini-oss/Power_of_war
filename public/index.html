@@ -1754,7 +1754,53 @@ function openSabotage(){
     </div>
   `;
  }
- 
+ function openSabotageUnit(type){
+
+  const units = {
+    sab_hacker_shop: {
+      name: 'هکر خرید',
+      icon: '💻',
+      desc: 'با موفقیت این عملیات، فروشگاه کشور هدف به مدت ۲ ساعت مسدود می‌شود.'
+    },
+    sab_hacker_counter: {
+      name: 'هکر آنتی‌سناریو',
+      icon: '🛡️',
+      desc: 'با موفقیت این عملیات، ثبت سناریوی جنگی و دفاعی کشور هدف به مدت ۲ ساعت مسدود می‌شود.'
+    },
+    sab_bomber: {
+      name: 'بمب‌گذار',
+      icon: '💣',
+      desc: 'برای اجرای عملیات بمب‌گذاری علیه کشور هدف استفاده می‌شود.'
+    },
+    sab_guard: {
+      name: 'محافظ',
+      icon: '🛡️',
+      desc: 'از کشور شما در برابر عملیات بمب‌گذاری محافظت می‌کند.'
+    }
+  };
+
+  const unit = units[type];
+  if(!unit) return;
+
+  document.getElementById('seasonBody').innerHTML = `
+    <div class="card">
+      <h2>${unit.icon} ${unit.name}</h2>
+      <p class="muted">${unit.desc}</p>
+
+      <div class="tile">
+        <h3>وضعیت خرید</h3>
+        <p class="muted">
+          خرید و عملیات این نیرو پس از اتصال فروشگاه فعال می‌شود.
+        </p>
+      </div>
+
+      <div class="tile" onclick="openSabotage()">
+        <div class="ico">↩️</div>
+        <h3>بازگشت به مرکز خرابکاری</h3>
+      </div>
+    </div>
+  `;
+ }
 async function openBattle(){
 
  try{
