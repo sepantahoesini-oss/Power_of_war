@@ -2576,6 +2576,17 @@ if(
 
   if(a.error)
     return a.error;
+ const sabotageEnabled =
+  await setting(env,'sabotage_enabled','0');
+
+if(sabotageEnabled !== '1'){
+  return json(
+    {
+      message:'سیستم خرابکاری فعلاً غیرفعال است.'
+    },
+    403
+  );
+}
 
   const d=
     await req.json();
