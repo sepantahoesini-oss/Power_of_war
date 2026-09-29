@@ -2273,7 +2273,7 @@ export default {
     ctx.waitUntil(
       Promise.all([
         addIncome(env),
-        aiTick(env)
+        aiTick(env),
        processSabotage(env)
       ])
     );
