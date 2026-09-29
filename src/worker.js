@@ -2720,6 +2720,7 @@ if(
           target_player_id,
           sabotage_type,
           status,
+          expires_at,
           result_data
         )
         VALUES(?,?,?,'pending',datetime('now','+5 minutes'),'{}')
