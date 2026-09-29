@@ -2421,6 +2421,14 @@ export default {
                 '1'
               )
             )==='1',
+         sabotage_enabled:
+  (
+    await setting(
+      env,
+      'sabotage_enabled',
+      '0'
+    )
+  )==='1',
 
           bitcoin_price:
             Number(
