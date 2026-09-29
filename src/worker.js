@@ -750,6 +750,16 @@ async function publicPlayer(
   for(
     const k of allAssetKeys
   ){
+   if(
+      !includeCode &&
+      [
+        'sab_hacker_shop',
+        'sab_hacker_counter',
+        'sab_bomber',
+        'sab_guard'
+      ].includes(k)
+    )
+      continue;
 
     assets[k]={
       name:META[k].name,
