@@ -2239,6 +2239,24 @@ async function aiTick(env){
 
 }
 
+async function processSabotage(env){
+
+  await env.DB
+    .prepare(`
+      UPDATE s8_sabotage_operations
+      SET
+        status='resolved',
+        result='expired',
+        resolved_at=CURRENT_TIMESTAMP,
+        result_data='{"reason":"timeout"}'
+      WHERE
+        status='pending'
+        AND expires_at IS NOT NULL
+        AND expires_at<=CURRENT_TIMESTAMP
+    `)
+    .run();
+
+}
 
 /* =========================================================
    WORKER
