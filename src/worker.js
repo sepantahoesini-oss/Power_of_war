@@ -159,7 +159,11 @@ const CATALOG={
     ['فرمانده','commander',25000],
     ['فرمانده پیشرفته','commander_advanced',50000],
     ['فرمانده ویژه','commander_special',100000],
-    ['فرمانده کل','commander_general',250000]
+   ['فرمانده کل','commander_general',250000],
+       ['هکر خرید','sab_hacker_shop',50000],
+    ['هکر آنتی‌سناریو','sab_hacker_counter',50000],
+    ['بمب‌گذار','sab_bomber',100000],
+    ['محافظ','sab_guard',50000]
   ],
 
   defense:[
