@@ -1,6 +1,130 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
+ 
+<style>
+  #rebuild-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background:
+      radial-gradient(ellipse at top, #183d29 0%, transparent 55%),
+      #06090b;
+    color: #f2f6f3;
+    font-family: Tahoma, Arial, sans-serif;
+    direction: rtl;
+  }
+
+  #rebuild-gate .gate-card {
+    width: 100%;
+    max-width: 390px;
+    padding: 28px 22px;
+    text-align: center;
+    background: #10171b;
+    border: 1px solid #2a6240;
+    border-radius: 18px;
+    box-shadow: 0 0 35px #42ff7618;
+  }
+
+  #rebuild-gate h1 {
+    color: #8dff9a;
+    font-size: 25px;
+    margin: 0 0 12px;
+  }
+
+  #rebuild-gate p {
+    color: #b9c8be;
+    line-height: 1.9;
+  }
+
+  #rebuild-gate input,
+  #rebuild-gate button {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 13px;
+    margin-top: 12px;
+    border-radius: 10px;
+    font: inherit;
+  }
+
+  #rebuild-gate input {
+    color: white;
+    background: #080d10;
+    border: 1px solid #35473c;
+    outline-color: #8dff9a;
+    direction: ltr;
+    text-align: center;
+  }
+
+  #rebuild-gate button {
+    color: #061008;
+    background: #8dff9a;
+    border: 0;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  #rebuild-error {
+    min-height: 24px;
+    color: #ff5968 !important;
+    font-size: 13px;
+  }
+</style>
+
+<div id="rebuild-gate">
+  <div class="gate-card">
+    <div style="font-size:38px">⚙️</div>
+    <h1>درحال بازسازی</h1>
+    <p>
+      سایت POWER OF WAR درحال توسعه و به‌روزرسانی است.
+      <br>
+      برای ورود، رمز برنامه‌نویس را وارد کنید.
+    </p>
+
+    <form id="rebuild-form">
+      <input
+        id="rebuild-password"
+        type="password"
+        placeholder="رمز برنامه‌نویس"
+        autocomplete="current-password"
+        required
+      >
+      <button type="submit">ورود به سایت</button>
+      <p id="rebuild-error" role="alert"></p>
+    </form>
+  </div>
+</div>
+
+<script>
+(() => {
+  const PASSWORD = "SEpantaPRogr000";
+  const gate = document.getElementById("rebuild-gate");
+  const form = document.getElementById("rebuild-form");
+  const input = document.getElementById("rebuild-password");
+  const error = document.getElementById("rebuild-error");
+
+  // تا زمان ورود صحیح، سایت نمایش داده نمی‌شود.
+  document.documentElement.style.overflow = "hidden";
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    if (input.value === PASSWORD) {
+      gate.remove();
+      document.documentElement.style.overflow = "";
+    } else {
+      error.textContent = "رمز اشتباه است؛ دوباره امتحان کن.";
+      input.value = "";
+      input.focus();
+    }
+  });
+})();
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POWER OF WAR | سیزن ۸</title>
@@ -2400,129 +2524,4 @@ document.addEventListener("click",()=>{
 </script>
 <script>
 </body>
-
- 
-<style>
-  #rebuild-gate {
-    position: fixed;
-    inset: 0;
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background:
-      radial-gradient(ellipse at top, #183d29 0%, transparent 55%),
-      #06090b;
-    color: #f2f6f3;
-    font-family: Tahoma, Arial, sans-serif;
-    direction: rtl;
-  }
-
-  #rebuild-gate .gate-card {
-    width: 100%;
-    max-width: 390px;
-    padding: 28px 22px;
-    text-align: center;
-    background: #10171b;
-    border: 1px solid #2a6240;
-    border-radius: 18px;
-    box-shadow: 0 0 35px #42ff7618;
-  }
-
-  #rebuild-gate h1 {
-    color: #8dff9a;
-    font-size: 25px;
-    margin: 0 0 12px;
-  }
-
-  #rebuild-gate p {
-    color: #b9c8be;
-    line-height: 1.9;
-  }
-
-  #rebuild-gate input,
-  #rebuild-gate button {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 13px;
-    margin-top: 12px;
-    border-radius: 10px;
-    font: inherit;
-  }
-
-  #rebuild-gate input {
-    color: white;
-    background: #080d10;
-    border: 1px solid #35473c;
-    outline-color: #8dff9a;
-    direction: ltr;
-    text-align: center;
-  }
-
-  #rebuild-gate button {
-    color: #061008;
-    background: #8dff9a;
-    border: 0;
-    font-weight: bold;
-    cursor: pointer;
-  }
-
-  #rebuild-error {
-    min-height: 24px;
-    color: #ff5968 !important;
-    font-size: 13px;
-  }
-</style>
-
-<div id="rebuild-gate">
-  <div class="gate-card">
-    <div style="font-size:38px">⚙️</div>
-    <h1>درحال بازسازی</h1>
-    <p>
-      سایت POWER OF WAR درحال توسعه و به‌روزرسانی است.
-      <br>
-      برای ورود، رمز برنامه‌نویس را وارد کنید.
-    </p>
-
-    <form id="rebuild-form">
-      <input
-        id="rebuild-password"
-        type="password"
-        placeholder="رمز برنامه‌نویس"
-        autocomplete="current-password"
-        required
-      >
-      <button type="submit">ورود به سایت</button>
-      <p id="rebuild-error" role="alert"></p>
-    </form>
-  </div>
-</div>
-
-<script>
-(() => {
-  const PASSWORD = "SEpantaPRogr000";
-  const gate = document.getElementById("rebuild-gate");
-  const form = document.getElementById("rebuild-form");
-  const input = document.getElementById("rebuild-password");
-  const error = document.getElementById("rebuild-error");
-
-  // تا زمان ورود صحیح، سایت نمایش داده نمی‌شود.
-  document.documentElement.style.overflow = "hidden";
-
-  form.addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    if (input.value === PASSWORD) {
-      gate.remove();
-      document.documentElement.style.overflow = "";
-    } else {
-      error.textContent = "رمز اشتباه است؛ دوباره امتحان کن.";
-      input.value = "";
-      input.focus();
-    }
-  });
-})();
-</script>
-
   </html>
